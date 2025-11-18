@@ -24,13 +24,25 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class ActorScheduler {
+public class ActorScheduler implements AutoCloseable, ActorSchedulingService {
   private final AtomicReference<SchedulerState> state = new AtomicReference<>();
   private final ActorExecutor actorTaskExecutor;
+  private final String schedulerName;
 
   public ActorScheduler(final ActorSchedulerBuilder builder) {
     state.set(SchedulerState.NEW);
     actorTaskExecutor = builder.getActorExecutor();
+    schedulerName = builder.schedulerName;
+  }
+
+  @Override
+  public String actorSchedulerName() {
+    return schedulerName;
+  }
+
+  @Override
+  public void close() throws Exception {
+    stop().get(10, TimeUnit.SECONDS);
   }
 
   /**
@@ -38,6 +50,7 @@ public class ActorScheduler {
    *
    * @param actor the actor to submit
    */
+  @Override
   public ActorFuture<Void> submitActor(final Actor actor) {
     return actorTaskExecutor.submitCpuBound(actor.actor.task);
   }
@@ -59,6 +72,7 @@ public class ActorScheduler {
    * @param actor the actor to submit
    * @param schedulingHints additional scheduling hint
    */
+  @Override
   public ActorFuture<Void> submitActor(final Actor actor, final int schedulingHints) {
     final ActorTask task = actor.actor.task;
 

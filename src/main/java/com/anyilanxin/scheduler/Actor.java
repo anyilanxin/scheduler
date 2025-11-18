@@ -17,6 +17,7 @@
 package com.anyilanxin.scheduler;
 
 import com.anyilanxin.scheduler.future.ActorFuture;
+
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
@@ -119,8 +120,8 @@ public abstract class Actor implements AutoCloseable, AsyncClosable, Concurrency
   }
 
   @Override
-  public ScheduledTimer runDelayed(final Duration delay, final Runnable runnable) {
-    return actor.runDelayed(delay, runnable);
+  public ScheduledTimer schedule(final Duration delay, final Runnable runnable) {
+      return actor.schedule(delay, runnable);
   }
 
   public static Actor wrap(final Consumer<ActorControl> r) {

@@ -24,6 +24,7 @@ import com.anyilanxin.scheduler.future.ActorFuture;
 import com.anyilanxin.scheduler.future.AllCompletedFutureConsumer;
 import com.anyilanxin.scheduler.future.FirstSuccessfullyCompletedFutureConsumer;
 import com.anyilanxin.scheduler.future.FutureContinuationRunnable;
+
 import java.time.Duration;
 import java.util.Collection;
 import java.util.concurrent.Callable;
@@ -244,7 +245,7 @@ public class ActorControl implements ConcurrencyControl {
    * @return
    */
   @Override
-  public ScheduledTimer runDelayed(final Duration delay, final Runnable runnable) {
+  public ScheduledTimer schedule(final Duration delay, final Runnable runnable) {
     ensureCalledFromWithinActor("runDelayed(...)");
     return scheduleTimer(delay, false, runnable);
   }
