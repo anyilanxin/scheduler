@@ -1,4 +1,4 @@
-Thread Actor Scheduler
+Actor Thread Scheduler
 ===============
 
 ### 一、说明
