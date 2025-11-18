@@ -1,5 +1,6 @@
 /*
  * Copyright © 2017 camunda services GmbH (info@camunda.com)
+ * Copyright © 2025 anyilanxin zxh(anyilanxin@aliyun.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,19 +16,19 @@
  */
 package com.anyilanxin.scheduler.channel;
 
-import static org.agrona.UnsafeAccess.UNSAFE;
-
 import com.anyilanxin.scheduler.ActorCondition;
 import com.anyilanxin.scheduler.ActorJob;
 import com.anyilanxin.scheduler.ActorSubscription;
 import com.anyilanxin.scheduler.ActorTask;
+
+import static org.agrona.UnsafeAccess.UNSAFE;
 
 @SuppressWarnings("restriction")
 public class ChannelConsumerCondition
     implements ActorCondition, ActorSubscription, ChannelSubscription {
   private static final long TRIGGER_COUNT_OFFSET;
 
-  private volatile long triggerCount = 0;
+  private final long triggerCount = 0;
   private long processedTiggersCount = 0;
 
   private final ConsumableChannel channel;
@@ -38,20 +39,20 @@ public class ChannelConsumerCondition
     try {
       TRIGGER_COUNT_OFFSET =
           UNSAFE.objectFieldOffset(ChannelConsumerCondition.class.getDeclaredField("triggerCount"));
-    } catch (Exception e) {
+    } catch (final Exception e) {
       throw new RuntimeException(e);
     }
   }
 
-  public ChannelConsumerCondition(ActorJob job, ConsumableChannel channel) {
+  public ChannelConsumerCondition(final ActorJob job, final ConsumableChannel channel) {
     this.job = job;
-    this.task = job.getTask();
+    task = job.getTask();
     this.channel = channel;
   }
 
   @Override
   public boolean poll() {
-    final long polledCount = this.triggerCount;
+    final long polledCount = triggerCount;
     final boolean hasAvailable = channel.hasAvailable();
     return polledCount > processedTiggersCount || hasAvailable;
   }
@@ -64,7 +65,7 @@ public class ChannelConsumerCondition
 
   @Override
   public void onJobCompleted() {
-    this.processedTiggersCount++;
+    processedTiggersCount++;
   }
 
   @Override

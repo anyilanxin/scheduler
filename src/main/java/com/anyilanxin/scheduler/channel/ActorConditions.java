@@ -1,5 +1,6 @@
 /*
  * Copyright © 2017 camunda services GmbH (info@camunda.com)
+ * Copyright © 2025 anyilanxin zxh(anyilanxin@aliyun.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,6 +17,7 @@
 package com.anyilanxin.scheduler.channel;
 
 import com.anyilanxin.scheduler.ActorCondition;
+
 import java.util.concurrent.atomic.AtomicReference;
 
 public class ActorConditions {
@@ -93,7 +95,7 @@ public class ActorConditions {
   }
 
   private static void copyArray(
-      ActorCondition[] src, int srcPos, ActorCondition[] dest, int destPos, int length) {
+          final ActorCondition[] src, final int srcPos, final ActorCondition[] dest, final int destPos, final int length) {
     if (length < JNI_COPY_TO_ARRAY_THRESHOLD) {
       int srcIndex = srcPos;
       int destIndex = destPos;

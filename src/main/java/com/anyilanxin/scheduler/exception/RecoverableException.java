@@ -1,5 +1,6 @@
 /*
  * Copyright © 2017 camunda services GmbH (info@camunda.com)
+ * Copyright © 2025 anyilanxin zxh(anyilanxin@aliyun.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,15 +22,15 @@ package com.anyilanxin.scheduler.exception;
  */
 public class RecoverableException extends RuntimeException {
 
-  public RecoverableException(String message) {
+  public RecoverableException(final String message) {
     super(message);
   }
 
-  public RecoverableException(String message, Throwable cause) {
+  public RecoverableException(final String message, final Throwable cause) {
     super(message, cause);
   }
 
-  public RecoverableException(Throwable cause) {
+  public RecoverableException(final Throwable cause) {
     super(cause);
   }
 }
