@@ -16,6 +16,8 @@
  */
 package com.anyilanxin.scheduler;
 
+import static com.anyilanxin.scheduler.Loggers.ACTOR_LOGGER;
+
 import com.anyilanxin.scheduler.future.ActorFuture;
 import java.time.Duration;
 import java.util.Collection;
@@ -96,6 +98,15 @@ public abstract class Actor implements AutoCloseable, AsyncClosable, Concurrency
   public <T> void runOnCompletion(
       final Collection<ActorFuture<T>> actorFutures, final Consumer<Throwable> callback) {
     actor.runOnCompletion(actorFutures, callback);
+  }
+
+  /** Invoked when a task throws and the actor phase is not 'STARTING' and 'CLOSING'. */
+  protected void handleFailure(final Throwable failure) {
+    ACTOR_LOGGER.error(
+        "Uncaught exception in '{}' in phase '{}'. Continuing with next job.",
+        getName(),
+        actor.getLifecyclePhase(),
+        failure);
   }
 
   @Override

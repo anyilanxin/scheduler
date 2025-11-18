@@ -17,8 +17,10 @@
 package com.anyilanxin.scheduler.clock;
 
 import com.anyilanxin.scheduler.ActorThread;
+import java.time.Instant;
+import java.time.InstantSource;
 
-public interface ActorClock {
+public interface ActorClock extends InstantSource {
   boolean update();
 
   long getTimeMillis();
@@ -35,5 +37,15 @@ public interface ActorClock {
   static long currentTimeMillis() {
     final ActorClock clock = current();
     return clock != null ? clock.getTimeMillis() : System.currentTimeMillis();
+  }
+
+  @Override
+  default Instant instant() {
+    return Instant.ofEpochMilli(getTimeMillis());
+  }
+
+  @Override
+  default long millis() {
+    return getTimeMillis();
   }
 }
