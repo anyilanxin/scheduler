@@ -18,4 +18,4 @@ pluginManagement {
 
 
 // 项目信息
-rootProject.name = 'msgpack'
+rootProject.name = 'scheduler'
