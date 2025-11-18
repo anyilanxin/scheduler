@@ -16,6 +16,11 @@
  */
 package com.anyilanxin.scheduler;
 
-public interface ScheduledTimer {
+public interface ScheduledTimer extends CloseableSilently {
   void cancel();
+
+  @Override
+  default void close() {
+    cancel();
+  }
 }
