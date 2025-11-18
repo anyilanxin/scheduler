@@ -24,7 +24,7 @@ plugins {
 apply from: rootProject.file('buildSrc/common-config.gradle')
 group = 'com.anyilanxin.scheduler'
 
-description = "Thread Actor Scheduler"
+description = "Actor Thread Scheduler"
 
 configure(jarInfo) {
 	archiveName = "scheduler"
