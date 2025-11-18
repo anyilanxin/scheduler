@@ -17,6 +17,7 @@
 package com.anyilanxin.scheduler;
 
 import com.anyilanxin.scheduler.future.ActorFuture;
+
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
@@ -123,7 +124,11 @@ public abstract class Actor implements AutoCloseable, AsyncClosable, Concurrency
     return actor.schedule(delay, runnable);
   }
 
-  public static Actor wrap(final Consumer<ActorControl> r) {
+    public static ActorBuilder newActor() {
+        return new ActorBuilder();
+    }
+
+    public static Actor wrap(final Consumer<ActorControl> r) {
     return new Actor() {
 
       @Override
@@ -137,4 +142,46 @@ public abstract class Actor implements AutoCloseable, AsyncClosable, Concurrency
       }
     };
   }
+
+    public static class ActorBuilder {
+
+        private String name;
+        private Consumer<ActorControl> actorStartedHandler;
+
+        public ActorBuilder name(final String name) {
+            this.name = name;
+            return this;
+        }
+
+        public ActorBuilder actorStartedHandler(final Consumer<ActorControl> actorStartedHandler) {
+            this.actorStartedHandler = actorStartedHandler;
+            return this;
+        }
+
+        public Actor build() {
+            final var wrapper =
+                    new Consumer<ActorControl>() {
+
+                        @Override
+                        public String toString() {
+                            if (name != null) {
+                                return name;
+                            } else if (actorStartedHandler != null) {
+                                return actorStartedHandler.getClass().getName();
+                            } else {
+                                return super.toString();
+                            }
+                        }
+
+                        @Override
+                        public void accept(final ActorControl t) {
+                            if (actorStartedHandler != null) {
+                                actorStartedHandler.accept(t);
+                            }
+                        }
+                    };
+
+            return wrap(wrapper);
+        }
+    }
 }
