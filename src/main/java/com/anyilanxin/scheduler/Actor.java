@@ -47,13 +47,11 @@ public abstract class Actor {
 
   public static Actor wrap(final Consumer<ActorControl> r) {
     return new Actor() {
-      @java.lang.Override
       @Override
       protected void onActorStarted() {
         r.accept(actor);
       }
 
-      @java.lang.Override
       @Override
       public String getName() {
         return r.toString();

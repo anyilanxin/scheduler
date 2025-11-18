@@ -24,7 +24,6 @@ import com.anyilanxin.scheduler.future.ActorFuture;
 import com.anyilanxin.scheduler.future.AllCompletedFutureConsumer;
 import com.anyilanxin.scheduler.future.FirstSuccessfullyCompletedFutureConsumer;
 import com.anyilanxin.scheduler.future.FutureContinuationRunnable;
-
 import java.time.Duration;
 import java.util.Collection;
 import java.util.concurrent.Callable;
@@ -245,7 +244,7 @@ public class ActorControl {
    *
    * @param action the action to run.
    */
-  public void submit(Runnable action) {
+  public void submit(final Runnable action) {
     final ActorThread currentActorRunner = ensureCalledFromActorThread("run(...)");
     final ActorTask currentTask = currentActorRunner.getCurrentTask();
 
@@ -262,7 +261,7 @@ public class ActorControl {
     task.submit(job);
 
     if (currentTask == task) {
-      yield();
+      handleYield();
     }
   }
 
@@ -281,7 +280,8 @@ public class ActorControl {
     return scheduleTimer(delay, true, runnable);
   }
 
-  private TimerSubscription scheduleTimer(final Duration delay, final boolean isRecurring, final Runnable runnable) {
+  private TimerSubscription scheduleTimer(
+      final Duration delay, final boolean isRecurring, final Runnable runnable) {
     final ActorJob job = new ActorJob();
     job.setRunnable(runnable);
     job.onJobAddedToTask(task);
@@ -307,7 +307,8 @@ public class ActorControl {
    * @param callback the callback that handle the future's result. The throwable is <code>null
    *     </code> when the future is completed successfully.
    */
-  public <T> void runOnCompletion(final ActorFuture<T> future, final BiConsumer<T, Throwable> callback) {
+  public <T> void runOnCompletion(
+      final ActorFuture<T> future, final BiConsumer<T, Throwable> callback) {
     ensureCalledFromWithinActor("runOnCompletion(...)");
 
     final ActorLifecyclePhase lifecyclePhase = task.getLifecyclePhase();
@@ -333,7 +334,7 @@ public class ActorControl {
    *     </code> when the future is completed successfully.
    */
   public <T> void runOnCompletionBlockingCurrentPhase(
-          final ActorFuture<T> future, final BiConsumer<T, Throwable> callback) {
+      final ActorFuture<T> future, final BiConsumer<T, Throwable> callback) {
     ensureCalledFromWithinActor("runOnCompletionBlockingCurrentPhase(...)");
 
     final ActorLifecyclePhase lifecyclePhase = task.getLifecyclePhase();
@@ -351,9 +352,9 @@ public class ActorControl {
   }
 
   private <T> void submitContinuationJob(
-          final ActorFuture<T> future,
-          final BiConsumer<T, Throwable> callback,
-          final Function<ActorJob, ActorFutureSubscription> futureSubscriptionSupplier) {
+      final ActorFuture<T> future,
+      final BiConsumer<T, Throwable> callback,
+      final Function<ActorJob, ActorFutureSubscription> futureSubscriptionSupplier) {
     final ActorJob continuationJob = new ActorJob();
     continuationJob.setRunnable(new FutureContinuationRunnable<>(future, callback));
     continuationJob.setAutoCompleting(true);
@@ -377,7 +378,7 @@ public class ActorControl {
    *     Otherwise, it holds the exception of the last completed future.
    */
   public <T> void runOnCompletion(
-          final Collection<ActorFuture<T>> futures, final Consumer<Throwable> callback) {
+      final Collection<ActorFuture<T>> futures, final Consumer<Throwable> callback) {
     if (!futures.isEmpty()) {
       final BiConsumer<T, Throwable> futureConsumer =
           new AllCompletedFutureConsumer<>(futures.size(), callback);
@@ -403,7 +404,7 @@ public class ActorControl {
    *     of the last completed future.
    */
   public <T> void runOnFirstCompletion(
-          final Collection<ActorFuture<T>> futures, final BiConsumer<T, Throwable> callback) {
+      final Collection<ActorFuture<T>> futures, final BiConsumer<T, Throwable> callback) {
     runOnFirstCompletion(futures, callback, null);
   }
 
@@ -422,7 +423,9 @@ public class ActorControl {
    *     completed
    */
   public <T> void runOnFirstCompletion(
-          final Collection<ActorFuture<T>> futures, final BiConsumer<T, Throwable> callback, final Consumer<T> closer) {
+      final Collection<ActorFuture<T>> futures,
+      final BiConsumer<T, Throwable> callback,
+      final Consumer<T> closer) {
     final BiConsumer<T, Throwable> futureConsumer =
         new FirstSuccessfullyCompletedFutureConsumer<>(futures.size(), callback, closer);
 
@@ -432,9 +435,9 @@ public class ActorControl {
   }
 
   /** can be called by the actor to yield the thread */
-  public void yield() {
-    final ActorJob job = ensureCalledFromWithinActor("yield()");
-    job.getTask().yield();
+  public void handleYield() {
+    final ActorJob job = ensureCalledFromWithinActor("handleYield()");
+    job.getTask().handleYield();
   }
 
   public ActorFuture<Void> close() {

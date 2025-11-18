@@ -16,10 +16,10 @@
  */
 package com.anyilanxin.scheduler;
 
-import static org.agrona.UnsafeAccess.UNSAFE;
-
 import com.anyilanxin.scheduler.future.ActorFuture;
 import com.anyilanxin.scheduler.future.CompletableActorFuture;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Deque;
@@ -62,14 +62,16 @@ public class ActorTask {
     }
   }
 
-  private static final long STATE_COUNT_OFFSET;
-  private static final long SCHEDULING_STATE_OFFSET;
+  private static final VarHandle STATE_COUNT_VAR_HANDLE;
+  private static final VarHandle SCHEDULING_STATE_VAR_HANDLE;
 
   static {
     try {
-      STATE_COUNT_OFFSET = UNSAFE.objectFieldOffset(ActorTask.class.getDeclaredField("stateCount"));
-      SCHEDULING_STATE_OFFSET =
-          UNSAFE.objectFieldOffset(ActorTask.class.getDeclaredField("schedulingState"));
+      STATE_COUNT_VAR_HANDLE =
+          MethodHandles.lookup().findVarHandle(ActorTask.class, "stateCount", long.class);
+      SCHEDULING_STATE_VAR_HANDLE =
+          MethodHandles.lookup()
+              .findVarHandle(ActorTask.class, "schedulingState", TaskSchedulingState.class);
     } catch (final Exception e) {
       throw new RuntimeException(e);
     }
@@ -368,19 +370,23 @@ public class ActorTask {
   }
 
   boolean casStateCount(final long expectedCount) {
-    return UNSAFE.compareAndSwapLong(this, STATE_COUNT_OFFSET, expectedCount, expectedCount + 1);
+    if (stateCount == expectedCount) {
+      stateCount = expectedCount + 1;
+      return true;
+    }
+    return false;
   }
 
   boolean casState(final TaskSchedulingState expectedState, final TaskSchedulingState newState) {
-    return UNSAFE.compareAndSwapObject(this, SCHEDULING_STATE_OFFSET, expectedState, newState);
+    if (schedulingState == expectedState) {
+      schedulingState = newState;
+      return true;
+    }
+    return false;
   }
 
   public boolean claim(final long stateCount) {
-    if (casStateCount(stateCount)) {
-      return true;
-    }
-
-    return false;
+    return casStateCount(stateCount);
   }
 
   /**
@@ -508,7 +514,7 @@ public class ActorTask {
     return actor.getName() + " " + schedulingState + " phase: " + lifecyclePhase;
   }
 
-  public void yield() {
+  public void handleYield() {
     shouldYield = true;
   }
 

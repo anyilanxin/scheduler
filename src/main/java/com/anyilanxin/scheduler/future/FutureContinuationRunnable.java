@@ -16,7 +16,7 @@
  */
 package com.anyilanxin.scheduler.future;
 
-import io.zeebe.util.Loggers;
+import com.anyilanxin.scheduler.Loggers;
 import java.util.function.BiConsumer;
 
 public class FutureContinuationRunnable<T> implements Runnable {

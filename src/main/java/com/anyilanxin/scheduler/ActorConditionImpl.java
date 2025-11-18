@@ -16,11 +16,12 @@
  */
 package com.anyilanxin.scheduler;
 
-import static org.agrona.UnsafeAccess.UNSAFE;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 
 @SuppressWarnings("restriction")
 public class ActorConditionImpl implements ActorCondition, ActorSubscription {
-  private static final long TRIGGER_COUNT_OFFSET;
+  private static final VarHandle TRIGGER_COUNT_VAR_HANDLE;
 
   private final long triggerCount = 0;
   private long runCount = 0;
@@ -31,8 +32,9 @@ public class ActorConditionImpl implements ActorCondition, ActorSubscription {
 
   static {
     try {
-      TRIGGER_COUNT_OFFSET =
-          UNSAFE.objectFieldOffset(ActorConditionImpl.class.getDeclaredField("triggerCount"));
+      TRIGGER_COUNT_VAR_HANDLE =
+          MethodHandles.lookup()
+              .findVarHandle(ActorConditionImpl.class, "triggerCount", long.class);
     } catch (final Exception e) {
       throw new RuntimeException(e);
     }
@@ -46,7 +48,7 @@ public class ActorConditionImpl implements ActorCondition, ActorSubscription {
 
   @Override
   public void signal() {
-    UNSAFE.getAndAddInt(this, TRIGGER_COUNT_OFFSET, 1);
+    TRIGGER_COUNT_VAR_HANDLE.getAndAdd(this, 1);
     task.tryWakeup();
   }
 

@@ -16,19 +16,22 @@
  */
 package com.anyilanxin.scheduler;
 
-import static org.agrona.UnsafeAccess.UNSAFE;
-
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 import org.agrona.concurrent.ManyToOneConcurrentLinkedQueue;
 
 @SuppressWarnings("restriction")
 class ActorTaskQueueNode {
-  protected static final long PREV_OFFSET;
-  protected static final long NEXT_OFFSET;
+  protected static final VarHandle PREV_VAR_HANDLE;
+  protected static final VarHandle NEXT_VAR_HANDLE;
 
   static {
     try {
-      PREV_OFFSET = UNSAFE.objectFieldOffset(ActorTaskQueueNode.class.getDeclaredField("prev"));
-      NEXT_OFFSET = UNSAFE.objectFieldOffset(ActorTaskQueueNode.class.getDeclaredField("next"));
+      final MethodHandles.Lookup lookup = MethodHandles.lookup();
+      PREV_VAR_HANDLE =
+          lookup.findVarHandle(ActorTaskQueueNode.class, "prev", ActorTaskQueueNode.class);
+      NEXT_VAR_HANDLE =
+          lookup.findVarHandle(ActorTaskQueueNode.class, "next", ActorTaskQueueNode.class);
     } catch (final Exception ex) {
       throw new RuntimeException(ex);
     }
@@ -42,12 +45,12 @@ class ActorTaskQueueNode {
 
   void nextOrdered(final ActorTaskQueueNode t) {
     assert t != this;
-    UNSAFE.putOrderedObject(this, NEXT_OFFSET, t);
+    NEXT_VAR_HANDLE.setRelease(this, t);
   }
 
   void prevOrdered(final ActorTaskQueueNode t) {
     assert t != this;
-    UNSAFE.putObjectVolatile(this, PREV_OFFSET, t);
+    PREV_VAR_HANDLE.setRelease(this, t);
   }
 
   public void setTask(final ActorTask task) {
@@ -57,19 +60,24 @@ class ActorTaskQueueNode {
 
 @SuppressWarnings("restriction")
 class ActorTaskQueuePadding1 {
-  protected static final long HEAD_OFFSET;
-  protected static final long TAIL_OFFSET;
-  protected static final long PREV_OFFSET;
-  protected static final long NEXT_OFFSET;
-  protected static final long STATE_COUNT_OFFSET;
+  protected static final VarHandle HEAD_VAR_HANDLE;
+  protected static final VarHandle TAIL_VAR_HANDLE;
+  protected static final VarHandle PREV_VAR_HANDLE;
+  protected static final VarHandle NEXT_VAR_HANDLE;
+  protected static final VarHandle STATE_COUNT_VAR_HANDLE;
 
   static {
     try {
-      HEAD_OFFSET = UNSAFE.objectFieldOffset(ActorTaskQueueHead.class.getDeclaredField("head"));
-      TAIL_OFFSET = UNSAFE.objectFieldOffset(ActorTaskQueueTail.class.getDeclaredField("tail"));
-      PREV_OFFSET = UNSAFE.objectFieldOffset(ActorTaskQueueNode.class.getDeclaredField("prev"));
-      NEXT_OFFSET = UNSAFE.objectFieldOffset(ActorTaskQueueNode.class.getDeclaredField("next"));
-      STATE_COUNT_OFFSET = UNSAFE.objectFieldOffset(ActorTask.class.getDeclaredField("stateCount"));
+      final MethodHandles.Lookup lookup = MethodHandles.lookup();
+      HEAD_VAR_HANDLE =
+          lookup.findVarHandle(ActorTaskQueueHead.class, "head", ActorTaskQueueNode.class);
+      TAIL_VAR_HANDLE =
+          lookup.findVarHandle(ActorTaskQueueTail.class, "tail", ActorTaskQueueNode.class);
+      PREV_VAR_HANDLE =
+          lookup.findVarHandle(ActorTaskQueueNode.class, "prev", ActorTaskQueueNode.class);
+      NEXT_VAR_HANDLE =
+          lookup.findVarHandle(ActorTaskQueueNode.class, "next", ActorTaskQueueNode.class);
+      STATE_COUNT_VAR_HANDLE = lookup.findVarHandle(ActorTask.class, "stateCount", long.class);
     } catch (final Exception ex) {
       throw new RuntimeException(ex);
     }
@@ -105,7 +113,7 @@ public class ActorTaskQueue extends ActorTaskQueueHead {
 
   public ActorTaskQueue() {
     headOrdered(empty);
-    UNSAFE.putOrderedObject(this, TAIL_OFFSET, empty);
+    TAIL_VAR_HANDLE.setRelease(this, empty);
   }
 
   /** appends a task at the end (tail) of the list */
@@ -192,15 +200,15 @@ public class ActorTaskQueue extends ActorTaskQueueHead {
   }
 
   private void headOrdered(final ActorTaskQueueNode head) {
-    UNSAFE.putOrderedObject(this, HEAD_OFFSET, head);
+    HEAD_VAR_HANDLE.setRelease(this, head);
   }
 
   private ActorTaskQueueNode swapTail(final ActorTaskQueueNode newTail) {
-    return (ActorTaskQueueNode) UNSAFE.getAndSetObject(this, TAIL_OFFSET, newTail);
+    return (ActorTaskQueueNode) TAIL_VAR_HANDLE.getAndSet(this, newTail);
   }
 
   private boolean casTail(
       final ActorTaskQueueNode expectedNode, final ActorTaskQueueNode updateNode) {
-    return UNSAFE.compareAndSwapObject(this, TAIL_OFFSET, expectedNode, updateNode);
+    return TAIL_VAR_HANDLE.compareAndSet(this, expectedNode, updateNode);
   }
 }

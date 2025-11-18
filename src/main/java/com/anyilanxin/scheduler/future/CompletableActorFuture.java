@@ -16,11 +16,11 @@
  */
 package com.anyilanxin.scheduler.future;
 
-import static org.agrona.UnsafeAccess.UNSAFE;
-
 import com.anyilanxin.scheduler.ActorTask;
 import com.anyilanxin.scheduler.ActorThread;
 import com.anyilanxin.scheduler.FutureUtil;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 import java.util.Queue;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -32,7 +32,7 @@ import org.agrona.concurrent.ManyToOneConcurrentLinkedQueue;
 /** Completable future implementation that is garbage free and reusable */
 @SuppressWarnings("restriction")
 public class CompletableActorFuture<V> implements ActorFuture<V> {
-  private static final long STATE_OFFSET;
+  private static final VarHandle STATE_VAR_HANDLE;
 
   private static final int AWAITING_RESULT = 1;
   private static final int COMPLETING = 2;
@@ -52,23 +52,32 @@ public class CompletableActorFuture<V> implements ActorFuture<V> {
   protected String failure;
   protected Throwable failureCause;
 
+  static {
+    try {
+      STATE_VAR_HANDLE =
+          MethodHandles.lookup().findVarHandle(CompletableActorFuture.class, "state", int.class);
+    } catch (final Exception ex) {
+      throw new RuntimeException(ex);
+    }
+  }
+
   public CompletableActorFuture() {
     setAwaitingResult();
   }
 
-  private CompletableActorFuture(V value) {
+  private CompletableActorFuture(final V value) {
     this.value = value;
-    this.state = COMPLETED;
+    state = COMPLETED;
   }
 
-  private CompletableActorFuture(Throwable throwable) {
+  private CompletableActorFuture(final Throwable throwable) {
     ensureValidThrowable(throwable);
-    this.failure = throwable.getMessage();
-    this.failureCause = throwable;
-    this.state = COMPLETED_EXCEPTIONALLY;
+    failure = throwable.getMessage();
+    failureCause = throwable;
+    state = COMPLETED_EXCEPTIONALLY;
   }
 
-  private void ensureValidThrowable(Throwable throwable) {
+  private void ensureValidThrowable(final Throwable throwable) {
     if (throwable == null) {
       throw new NullPointerException("Throwable must not be null.");
     }
@@ -79,16 +88,16 @@ public class CompletableActorFuture<V> implements ActorFuture<V> {
     isDoneCondition = completionLock.newCondition();
   }
 
-  public static <V> CompletableActorFuture<V> completed(V result) {
+  public static <V> CompletableActorFuture<V> completed(final V result) {
     return new CompletableActorFuture<>(result); // cast for null result
   }
 
-  public static <V> CompletableActorFuture<V> completedExceptionally(Throwable throwable) {
+  public static <V> CompletableActorFuture<V> completedExceptionally(final Throwable throwable) {
     return new CompletableActorFuture<>(throwable);
   }
 
   @Override
-  public boolean cancel(boolean mayInterruptIfRunning) {
+  public boolean cancel(final boolean mayInterruptIfRunning) {
     throw new UnsupportedOperationException();
   }
 
@@ -113,7 +122,7 @@ public class CompletableActorFuture<V> implements ActorFuture<V> {
   }
 
   @Override
-  public void block(ActorTask onCompletion) {
+  public void block(final ActorTask onCompletion) {
     blockedTasks.add(onCompletion);
   }
 
@@ -121,13 +130,13 @@ public class CompletableActorFuture<V> implements ActorFuture<V> {
   public V get() throws ExecutionException, InterruptedException {
     try {
       return get(Integer.MAX_VALUE, TimeUnit.MILLISECONDS);
-    } catch (TimeoutException e) {
+    } catch (final TimeoutException e) {
       throw new RuntimeException(e);
     }
   }
 
   @Override
-  public V get(long timeout, TimeUnit unit)
+  public V get(final long timeout, final TimeUnit unit)
       throws ExecutionException, TimeoutException, InterruptedException {
     if (ActorThread.current() != null) {
       if (!isDone()) {
@@ -160,10 +169,10 @@ public class CompletableActorFuture<V> implements ActorFuture<V> {
   }
 
   @Override
-  public void complete(V value) {
-    if (UNSAFE.compareAndSwapInt(this, STATE_OFFSET, AWAITING_RESULT, COMPLETING)) {
+  public void complete(final V value) {
+    if (STATE_VAR_HANDLE.compareAndSet(this, AWAITING_RESULT, COMPLETING)) {
       this.value = value;
-      this.state = COMPLETED;
+      state = COMPLETED;
       notifyBlockedTasks();
     } else {
       final String err =
@@ -177,14 +186,14 @@ public class CompletableActorFuture<V> implements ActorFuture<V> {
   }
 
   @Override
-  public void completeExceptionally(String failure, Throwable throwable) {
+  public void completeExceptionally(final String failure, final Throwable throwable) {
     // important for other actors that consume this by #runOnCompletion
     ensureValidThrowable(throwable);
 
-    if (UNSAFE.compareAndSwapInt(this, STATE_OFFSET, AWAITING_RESULT, COMPLETING)) {
+    if (STATE_VAR_HANDLE.compareAndSet(this, AWAITING_RESULT, COMPLETING)) {
       this.failure = failure;
-      this.failureCause = throwable;
-      this.state = COMPLETED_EXCEPTIONALLY;
+      failureCause = throwable;
+      state = COMPLETED_EXCEPTIONALLY;
       notifyBlockedTasks();
     } else {
       final String err =
@@ -197,7 +206,7 @@ public class CompletableActorFuture<V> implements ActorFuture<V> {
   }
 
   @Override
-  public void completeExceptionally(Throwable throwable) {
+  public void completeExceptionally(final Throwable throwable) {
     ensureValidThrowable(throwable);
     completeExceptionally(throwable.getMessage(), throwable);
   }
@@ -213,7 +222,7 @@ public class CompletableActorFuture<V> implements ActorFuture<V> {
     }
   }
 
-  private void notifyAllInQueue(Queue<ActorTask> tasks) {
+  private void notifyAllInQueue(final Queue<ActorTask> tasks) {
     while (!tasks.isEmpty()) {
       final ActorTask task = tasks.poll();
 
@@ -230,7 +239,7 @@ public class CompletableActorFuture<V> implements ActorFuture<V> {
 
   /** future is reusable after close */
   public boolean close() {
-    final int prevState = UNSAFE.getAndSetInt(this, STATE_OFFSET, CLOSED);
+    final int prevState = (int) STATE_VAR_HANDLE.getAndAdd(this, CLOSED);
 
     if (prevState != CLOSED) {
       value = null;
@@ -256,25 +265,16 @@ public class CompletableActorFuture<V> implements ActorFuture<V> {
     return failureCause;
   }
 
-  static {
-    try {
-      STATE_OFFSET =
-          UNSAFE.objectFieldOffset(CompletableActorFuture.class.getDeclaredField("state"));
-    } catch (final Exception ex) {
-      throw new RuntimeException(ex);
-    }
-  }
-
-  public void completeWith(CompletableActorFuture<V> otherFuture) {
+  public void completeWith(final CompletableActorFuture<V> otherFuture) {
     if (!otherFuture.isDone()) {
       throw new IllegalArgumentException(
           "Future is not completed, can't complete this future with uncompleted future.");
     }
 
     if (otherFuture.isCompletedExceptionally()) {
-      this.completeExceptionally(otherFuture.failureCause);
+      completeExceptionally(otherFuture.failureCause);
     } else {
-      this.complete(otherFuture.value);
+      complete(otherFuture.value);
     }
   }
 

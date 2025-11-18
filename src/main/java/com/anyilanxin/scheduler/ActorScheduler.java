@@ -267,7 +267,6 @@ public class ActorScheduler {
   }
 
   public static class DefaultActorThreadFactory implements ActorThreadFactory {
-    @java.lang.Override
     @Override
     public ActorThread newThread(
         final String name,

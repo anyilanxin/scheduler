@@ -16,17 +16,17 @@
  */
 package com.anyilanxin.scheduler.channel;
 
-import static org.agrona.UnsafeAccess.UNSAFE;
-
 import com.anyilanxin.scheduler.ActorCondition;
 import com.anyilanxin.scheduler.ActorJob;
 import com.anyilanxin.scheduler.ActorSubscription;
 import com.anyilanxin.scheduler.ActorTask;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 
 @SuppressWarnings("restriction")
 public class ChannelConsumerCondition
     implements ActorCondition, ActorSubscription, ChannelSubscription {
-  private static final long TRIGGER_COUNT_OFFSET;
+  private static final VarHandle TRIGGER_COUNT_VAR_HANDLE;
 
   private final long triggerCount = 0;
   private long processedTiggersCount = 0;
@@ -37,8 +37,9 @@ public class ChannelConsumerCondition
 
   static {
     try {
-      TRIGGER_COUNT_OFFSET =
-          UNSAFE.objectFieldOffset(ChannelConsumerCondition.class.getDeclaredField("triggerCount"));
+      TRIGGER_COUNT_VAR_HANDLE =
+          MethodHandles.lookup()
+              .findVarHandle(ChannelConsumerCondition.class, "triggerCount", long.class);
     } catch (final Exception e) {
       throw new RuntimeException(e);
     }
@@ -59,7 +60,7 @@ public class ChannelConsumerCondition
 
   @Override
   public void signal() {
-    UNSAFE.getAndAddLong(this, TRIGGER_COUNT_OFFSET, 1);
+    TRIGGER_COUNT_VAR_HANDLE.getAndAdd(this, 1);
     task.tryWakeup();
   }
 
