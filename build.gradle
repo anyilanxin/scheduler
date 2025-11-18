@@ -1,0 +1,102 @@
+/*
+ * Copyright © 2025 anyilanxin zxh (anyilanxin@aliyun.com)
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ *
+ * Software distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+plugins {
+	id 'idea'
+	id "java"
+	id 'java-library'
+	id "org.jetbrains.gradle.plugin.idea-ext" version "1.1.10"
+	id "com.diffplug.spotless" version "8.0.0"
+	id "code-spotless"
+	id "build-publish"
+}
+
+
+apply from: rootProject.file('buildSrc/common-config.gradle')
+group = 'com.anyilanxin.scheduler'
+
+description = "Thread Actor Scheduler"
+
+configure(jarInfo) {
+	archiveName = "scheduler"
+	licenseType = "apache,mpl"
+}
+
+java {
+	toolchain {
+		languageVersion = JavaLanguageVersion.of(25)
+	}
+}
+
+tasks.withType(Jar).configureEach {
+	duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+}
+
+tasks.withType(JavaExec).configureEach {
+	jvmArgs += [
+			"--add-opens=java.base/jdk.internal.misc=ALL-UNNAMED",
+			"-Xshare:auto",
+			"-Xshare:on"
+	]
+}
+
+tasks.withType(Test).configureEach {
+	jvmArgs += [
+			"--add-opens=java.base/jdk.internal.misc=ALL-UNNAMED",
+			"-Xshare:auto",
+			"-Xshare:on"
+	]
+}
+
+
+repositories {
+	maven {
+		url 'https://maven.aliyun.com/repository/central/'
+	}
+	mavenCentral()
+}
+
+configurations.configureEach {
+	resolutionStrategy {
+		cacheChangingModulesFor 0, "seconds"
+		cacheDynamicVersionsFor 0, "seconds"
+	}
+}
+
+
+tasks.register('buildSkipTest') {
+	group = 'build'
+	description = 'Builds the project skip tests'
+	doFirst {
+		tasks.withType(Test).configureEach { testTask ->
+			testTask.enabled = false
+		}
+		tasks.named('check').configure { checkTask ->
+			checkTask.enabled = false
+		}
+	}
+	dependsOn tasks.named('classes')
+	dependsOn tasks.named('jar')
+}
+
+
+dependencies {
+
+    implementation 'org.agrona:agrona:2.3.2'
+    implementation 'org.slf4j:slf4j-api:2.0.17'
+    implementation 'org.apache.logging.log4j:log4j-core:2.25.2'
+    implementation 'org.apache.logging.log4j:log4j-api:2.25.2'
+
+	testImplementation 'org.junit.jupiter:junit-jupiter-engine:6.0.1'
+	testImplementation 'junit:junit:4.13.2'
+	testImplementation 'org.assertj:assertj-core:3.27.6'
+}

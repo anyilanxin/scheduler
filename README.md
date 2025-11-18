@@ -1,58 +1,12 @@
-# Zeebe.io - Microservice Orchestration Engine
+Thread Actor Scheduler
+===============
 
+### 一、说明
 
-[![Maven Central](https://maven-badges.herokuapp.com/maven-central/io.zeebe/zeebe-distribution/badge.svg)](https://maven-badges.herokuapp.com/maven-central/io.zeebe/zeebe-distribution)
+本项目代码最初来源于[camunda zeebe0.19版本](https://github.com/camunda/camunda/tree/0.19.0)
+中util模块中的sched、retry、exception。
+由于后期 camunda zeebe 添加了自有协议，不在遵循 apache 协议。因此我们基于该版本进行了修改。包括支持最新 open jdk 以及方法统一。
 
-Zeebe scales orchestration of workers and microservices using visual workflows. Zeebe is horizontally scalable and fault tolerant so that you can reliably process all your transactions as they happen.
+### 二、注意
 
-**Features**
-
-* Visual Workflows
-* Audit Logs and History
-* Horizontal Scalability
-* Durability & Fault Tolerance
-* Fully Message-Driven
-* Easy to operate
-* Language agnostic
-
-[Learn more](https://docs.zeebe.io/basics/README.html)
-
-## DISCLAIMER
-
-Zeebe is currently a tech preview and not meant for production use - See [Roadmap](https://zeebe.io/roadmap).
-
-## Links
-
-* [Web Site](https://zeebe.io)
-* [Documentation](https://docs.zeebe.io)
-* [Issue Tracker](https://github.com/zeebe-io/zeebe/issues)
-* [Slack Channel](https://zeebe-slack-invite.herokuapp.com/)
-* [User Forum](https://forum.zeebe.io)
-* [Contribution Guidelines](/CONTRIBUTING.md)
-
-## Documentation
-
-* [Introduction](https://docs.zeebe.io/introduction/README.html)
-* [Basics](https://docs.zeebe.io/basics/README.html)
-* [Configuration](https://docs.zeebe.io/operations/the-zeebecfgtoml-file.html)
-* [Java Client](https://docs.zeebe.io/java-client/README.html)
-* [BPMN Workflows](https://docs.zeebe.io/bpmn-workflows/README.html)
-
-## Contributing
-
-Read the [Contributions Guide](/CONTRIBUTING.md)
-
-## Code of Conduct
-
-This project adheres to the Contributor Covenant [Code of
-Conduct](/CODE_OF_CONDUCT.md). By participating, you are expected to uphold
-this code. Please report unacceptable behavior to
-code-of-conduct@zeebe.io.
-
-## License
-
-Most Zeebe source files are made available under the [Apache License, Version
-2.0](/APACHE-2.0) except for the [broker-core](/broker-core) component. The
-[broker-core](/broker-core) source files are made available under the terms of
-the [GNU Affero General Public License (GNU AGPLv3)](/GNU-AGPL-3.0). See
-individual source files for details.
+注意文件协议头，我们对新添加的文件使用了 apache 兼容协议 MPL 2.0(原始文件依然为 apache 2.0协议)。具体以文件头部协议信息为准。

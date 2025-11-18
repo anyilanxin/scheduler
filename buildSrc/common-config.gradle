@@ -1,0 +1,37 @@
+/*
+ * Copyright © 2025 anyilanxin zxh (anyilanxin@aliyun.com)
+ *
+ * This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this
+ * file, You can obtain one at https://mozilla.org/MPL/2.0/.
+ *
+ * Software distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+ext {
+
+	def isAnYiSnapshots = Boolean.parseBoolean(anyiSnapshots)
+	def anyiSnapshotsSuffix = 'snapshot'
+	def anyiReleasesSuffix = 'release'
+	def anyiRepoUrlPrefix = 'https://packages.aliyun.com/63581b190e55ca7465986664/maven/'
+	// 仓库配置
+	repo = [
+			'snapshotsRepoUrl': "${anyiRepoUrlPrefix}${anyiSnapshotsSuffix}",
+			'releasesRepoUrl' : "${anyiRepoUrlPrefix}${anyiReleasesSuffix}",
+			'url'             : "${anyiRepoUrlPrefix}${isAnYiSnapshots ? anyiSnapshotsSuffix : anyiReleasesSuffix}",
+            'username'        : System.getenv("ALIYUN_REPO_USERNAME"),
+            'password'        : System.getenv("ALIYUN_REPO_PASSWORD"),
+	]
+
+
+	docker = [
+			'baseImage'   : 'eclipse-temurin:21.0.5_11-jre-jammy',
+			'imageRepoUrl': 'harbor.anyilanxin.com',
+			'username'    : 'username',
+			'password'    : 'password',
+	]
+
+}
+
