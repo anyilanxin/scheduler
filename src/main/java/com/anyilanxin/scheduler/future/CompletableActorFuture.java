@@ -70,6 +70,11 @@ public class CompletableActorFuture<V> implements ActorFuture<V> {
     state = COMPLETED;
   }
 
+  @Override
+  public V join(final long timeout, final TimeUnit timeUnit) {
+    return FutureUtil.join(this, timeout, timeUnit);
+  }
+
   private CompletableActorFuture(final Throwable throwable) {
     ensureValidThrowable(throwable);
     failure = throwable.getMessage();
@@ -90,6 +95,10 @@ public class CompletableActorFuture<V> implements ActorFuture<V> {
 
   public static <V> CompletableActorFuture<V> completed(final V result) {
     return new CompletableActorFuture<>(result); // cast for null result
+  }
+
+  public static CompletableActorFuture<Void> completed() {
+    return CompletableActorFuture.completed(null);
   }
 
   public static <V> CompletableActorFuture<V> completedExceptionally(final Throwable throwable) {

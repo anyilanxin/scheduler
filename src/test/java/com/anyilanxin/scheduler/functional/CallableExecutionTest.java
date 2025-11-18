@@ -73,6 +73,7 @@ public class CallableExecutionTest {
       return actor.call(() -> {});
     }
 
+    @Override
     void close() {
       actor.close();
     }

@@ -134,7 +134,10 @@ public class ActorThread extends Thread implements Consumer<Runnable> {
   }
 
   private void executeCurrentTask() {
-    MDC.put("actor-name", currentTask.getName());
+    final var properties = currentTask.getActor().getContext();
+    for (final var property : properties.entrySet()) {
+      MDC.put(property.getKey(), property.getValue());
+    }
     idleStrategy.onTaskExecuted();
 
     boolean resubmit = false;
@@ -149,7 +152,7 @@ public class ActorThread extends Thread implements Consumer<Runnable> {
       // TODO: resubmit on exception?
       //                resubmit = true;
     } finally {
-      MDC.remove("actor-name");
+      properties.keySet().forEach(MDC::remove);
 
       clock.update();
     }

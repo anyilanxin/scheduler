@@ -16,14 +16,23 @@
  */
 package com.anyilanxin.scheduler;
 
+import com.anyilanxin.scheduler.future.ActorFuture;
+
+import java.time.Duration;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
-public abstract class Actor {
+public abstract class Actor implements AutoCloseable, AsyncClosable, ConcurrencyControl {
   protected final ActorControl actor = new ActorControl(this);
-
-  public String getName() {
-    return getClass().getName();
-  }
+    private Map<String, String> context;
+    public static final String ACTOR_PROP_NAME = "actor-name";
+    private static final int MAX_CLOSE_TIMEOUT = 400;
 
   protected void onActorStarting() {
     // setup
@@ -45,9 +54,81 @@ public abstract class Actor {
     // notification that timers, conditions, etc. will no longer trigger from now on
   }
 
-  public static Actor wrap(final Consumer<ActorControl> r) {
+    /**
+     * actor context
+     *
+     * @return the context of the actor
+     */
+    protected Map<String, String> createContext() {
+        // return an modifiable map in order to simplify sub class implementation
+        final var baseContext = new HashMap<String, String>();
+        baseContext.put(ACTOR_PROP_NAME, getName());
+        return baseContext;
+    }
+
+    public String getName() {
+        return getClass().getSimpleName();
+    }
+
+
+    /**
+     *
+     * actor context
+     *
+     * @return {@link Map }<{@link String }, {@link String }>
+     */
+    public Map<String, String> getContext() {
+        if (context == null) {
+            context = Collections.unmodifiableMap(createContext());
+        }
+        return context;
+    }
+
+    public static String buildActorName(final String nameFirst, final String nameSecond) {
+        return "%s-%s".formatted(nameFirst, nameSecond);
+    }
+
+    @Override
+    public <T> void runOnCompletion(
+            final ActorFuture<T> future, final BiConsumer<T, Throwable> callback) {
+        actor.runOnCompletion(future, callback);
+    }
+
+    @Override
+    public <T> void runOnCompletion(
+            final Collection<ActorFuture<T>> actorFutures, final Consumer<Throwable> callback) {
+        actor.runOnCompletion(actorFutures, callback);
+    }
+
+    @Override
+    public void close() {
+        closeAsync().join(MAX_CLOSE_TIMEOUT, TimeUnit.SECONDS);
+    }
+
+    @Override
+    public ActorFuture<Void> closeAsync() {
+        return actor.close();
+    }
+
+    @Override
+    public void run(final Runnable action) {
+        actor.run(action);
+    }
+
+    @Override
+    public <T> ActorFuture<T> call(final Callable<T> callable) {
+        return actor.call(callable);
+    }
+
+    @Override
+    public ScheduledTimer runDelayed(final Duration delay, final Runnable runnable) {
+        return actor.runDelayed(delay, runnable);
+    }
+
+    public static Actor wrap(final Consumer<ActorControl> r) {
     return new Actor() {
-      @Override
+
+        @Override
       protected void onActorStarted() {
         r.accept(actor);
       }

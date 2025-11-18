@@ -107,6 +107,7 @@ public class CallableActionsTest {
       return actor.call(() -> {});
     }
 
+    @Override
     void close() {
       actor.close();
     }

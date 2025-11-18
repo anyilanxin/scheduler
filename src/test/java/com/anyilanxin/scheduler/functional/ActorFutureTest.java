@@ -708,6 +708,7 @@ public class ActorFutureTest {
       actor.call(() -> actor.runOnCompletionBlockingCurrentPhase(f, onCompletion));
     }
 
+    @Override
     public void close() {
       actor.close();
     }

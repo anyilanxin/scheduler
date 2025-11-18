@@ -64,6 +64,7 @@ class LifecycleRecordingActor extends Actor {
     phases.add(actor.getLifecyclePhase());
   }
 
+  @Override
   public ActorFuture<Void> close() {
     return actor.close();
   }

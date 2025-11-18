@@ -18,6 +18,7 @@ package com.anyilanxin.scheduler.future;
 
 import com.anyilanxin.scheduler.ActorTask;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 /** interface for actor futures */
 public interface ActorFuture<V> extends Future<V> {
@@ -28,6 +29,8 @@ public interface ActorFuture<V> extends Future<V> {
   void completeExceptionally(Throwable throwable);
 
   V join();
+
+  V join(long timeout, TimeUnit timeUnit);
 
   /** To be used by scheduler only */
   void block(ActorTask onCompletion);

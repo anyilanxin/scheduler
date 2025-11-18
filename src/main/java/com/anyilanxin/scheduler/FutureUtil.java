@@ -17,6 +17,7 @@
 package com.anyilanxin.scheduler;
 
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 public class FutureUtil {
   /**
@@ -31,6 +32,20 @@ public class FutureUtil {
       LangUtil.rethrowUnchecked(e);
     }
 
+    return null;
+  }
+
+  /**
+   * Invokes Future.get() returning the result of the invocation. Transforms checked exceptions into
+   * RuntimeExceptions to accommodate programmer laziness.
+   */
+  public static <T> T join(final Future<T> f, final long timeout, final TimeUnit timeUnit) {
+    try {
+      return f.get(timeout, timeUnit);
+    } catch (final Exception e) {
+      e.printStackTrace();
+      LangUtil.rethrowUnchecked(e);
+    }
     return null;
   }
 

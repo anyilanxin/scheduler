@@ -24,6 +24,7 @@ import com.anyilanxin.scheduler.future.ActorFuture;
 import com.anyilanxin.scheduler.future.AllCompletedFutureConsumer;
 import com.anyilanxin.scheduler.future.FirstSuccessfullyCompletedFutureConsumer;
 import com.anyilanxin.scheduler.future.FutureContinuationRunnable;
+
 import java.time.Duration;
 import java.util.Collection;
 import java.util.concurrent.Callable;
@@ -32,7 +33,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-public class ActorControl {
+public class ActorControl implements ConcurrencyControl {
   private final Actor actor;
 
   final ActorTask task;
@@ -118,6 +119,7 @@ public class ActorControl {
    * @param callable
    * @return
    */
+  @Override
   @SuppressWarnings("unchecked")
   public <T> ActorFuture<T> call(final Callable<T> callable) {
     final ActorThread runner = ActorThread.current();
@@ -161,6 +163,7 @@ public class ActorControl {
    *
    * @param action
    */
+  @Override
   public void run(final Runnable action) {
     scheduleRunnable(action, true);
   }
@@ -229,6 +232,7 @@ public class ActorControl {
    * @param runnable
    * @return
    */
+  @Override
   public ScheduledTimer runDelayed(final Duration delay, final Runnable runnable) {
     ensureCalledFromWithinActor("runDelayed(...)");
     return scheduleTimer(delay, false, runnable);
@@ -307,6 +311,7 @@ public class ActorControl {
    * @param callback the callback that handle the future's result. The throwable is <code>null
    *     </code> when the future is completed successfully.
    */
+  @Override
   public <T> void runOnCompletion(
       final ActorFuture<T> future, final BiConsumer<T, Throwable> callback) {
     ensureCalledFromWithinActor("runOnCompletion(...)");
@@ -377,6 +382,7 @@ public class ActorControl {
    * @param callback The throwable is <code>null</code> when all futures are completed successfully.
    *     Otherwise, it holds the exception of the last completed future.
    */
+  @Override
   public <T> void runOnCompletion(
       final Collection<ActorFuture<T>> futures, final Consumer<Throwable> callback) {
     if (!futures.isEmpty()) {
