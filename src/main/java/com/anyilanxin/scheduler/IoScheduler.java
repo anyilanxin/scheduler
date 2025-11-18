@@ -25,9 +25,9 @@ import com.anyilanxin.scheduler.clock.ActorClock;
  */
 public class IoScheduler implements TaskScheduler {
 
-    private final MultiLevelWorkstealingGroup tasks;
+  private final MultiLevelWorkstealingGroup tasks;
 
-    public IoScheduler(final MultiLevelWorkstealingGroup tasks) {
+  public IoScheduler(final MultiLevelWorkstealingGroup tasks) {
     this.tasks = tasks;
   }
 

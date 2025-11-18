@@ -45,16 +45,16 @@ public abstract class Actor {
     // notification that timers, conditions, etc. will no longer trigger from now on
   }
 
-    public static Actor wrap(final Consumer<ActorControl> r) {
+  public static Actor wrap(final Consumer<ActorControl> r) {
     return new Actor() {
-        @java.lang.Override
-        @Override
+      @java.lang.Override
+      @Override
       protected void onActorStarted() {
         r.accept(actor);
       }
 
-        @java.lang.Override
-        @Override
+      @java.lang.Override
+      @Override
       public String getName() {
         return r.toString();
       }

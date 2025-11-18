@@ -19,7 +19,6 @@ package com.anyilanxin.scheduler.retry;
 import com.anyilanxin.scheduler.ActorControl;
 import com.anyilanxin.scheduler.future.ActorFuture;
 import com.anyilanxin.scheduler.future.CompletableActorFuture;
-
 import java.util.function.BooleanSupplier;
 
 public class EndlessRetryStrategy implements RetryStrategy {
@@ -40,7 +39,8 @@ public class EndlessRetryStrategy implements RetryStrategy {
   }
 
   @Override
-  public ActorFuture<Boolean> runWithRetry(final OperationToRetry callable, final BooleanSupplier condition) {
+  public ActorFuture<Boolean> runWithRetry(
+      final OperationToRetry callable, final BooleanSupplier condition) {
     currentFuture = new CompletableActorFuture<>();
     terminateCondition = condition;
     retryMechanism.wrap(callable, terminateCondition, currentFuture);

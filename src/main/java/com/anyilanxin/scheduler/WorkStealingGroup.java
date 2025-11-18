@@ -16,9 +16,9 @@
  */
 package com.anyilanxin.scheduler;
 
-import java.util.concurrent.ThreadLocalRandom;
-
 import static com.anyilanxin.scheduler.ActorTask.TaskSchedulingState.QUEUED;
+
+import java.util.concurrent.ThreadLocalRandom;
 
 /** Workstealing group maintains a queue per thread. */
 public class WorkStealingGroup {

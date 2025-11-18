@@ -17,7 +17,6 @@
 package com.anyilanxin.scheduler.retry;
 
 import com.anyilanxin.scheduler.future.ActorFuture;
-
 import java.util.function.BooleanSupplier;
 
 public interface RetryStrategy {

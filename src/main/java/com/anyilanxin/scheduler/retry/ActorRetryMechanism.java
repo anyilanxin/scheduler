@@ -18,7 +18,6 @@ package com.anyilanxin.scheduler.retry;
 
 import com.anyilanxin.scheduler.ActorControl;
 import com.anyilanxin.scheduler.future.ActorFuture;
-
 import java.util.function.BooleanSupplier;
 
 public class ActorRetryMechanism {
@@ -29,12 +28,14 @@ public class ActorRetryMechanism {
   private BooleanSupplier currentTerminateCondition;
   private ActorFuture<Boolean> currentFuture;
 
-    public ActorRetryMechanism(final ActorControl actor) {
+  public ActorRetryMechanism(final ActorControl actor) {
     this.actor = actor;
   }
 
   void wrap(
-          final OperationToRetry callable, final BooleanSupplier condition, final ActorFuture<Boolean> resultFuture) {
+      final OperationToRetry callable,
+      final BooleanSupplier condition,
+      final ActorFuture<Boolean> resultFuture) {
     currentCallable = callable;
     currentTerminateCondition = condition;
     currentFuture = resultFuture;

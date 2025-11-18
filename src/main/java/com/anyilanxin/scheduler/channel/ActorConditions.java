@@ -17,7 +17,6 @@
 package com.anyilanxin.scheduler.channel;
 
 import com.anyilanxin.scheduler.ActorCondition;
-
 import java.util.concurrent.atomic.AtomicReference;
 
 public class ActorConditions {
@@ -95,7 +94,11 @@ public class ActorConditions {
   }
 
   private static void copyArray(
-          final ActorCondition[] src, final int srcPos, final ActorCondition[] dest, final int destPos, final int length) {
+      final ActorCondition[] src,
+      final int srcPos,
+      final ActorCondition[] dest,
+      final int destPos,
+      final int length) {
     if (length < JNI_COPY_TO_ARRAY_THRESHOLD) {
       int srcIndex = srcPos;
       int destIndex = destPos;

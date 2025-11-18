@@ -16,16 +16,15 @@
  */
 package com.anyilanxin.scheduler;
 
+import static org.agrona.UnsafeAccess.UNSAFE;
+
 import com.anyilanxin.scheduler.future.ActorFuture;
 import com.anyilanxin.scheduler.future.CompletableActorFuture;
-import org.agrona.concurrent.ManyToOneConcurrentLinkedQueue;
-
 import java.util.ArrayDeque;
 import java.util.Arrays;
 import java.util.Deque;
 import java.util.Queue;
-
-import static org.agrona.UnsafeAccess.UNSAFE;
+import org.agrona.concurrent.ManyToOneConcurrentLinkedQueue;
 
 /**
  * A task executed by the scheduler. For each actor (instance), exactly one task is created. Each
@@ -118,7 +117,7 @@ public class ActorTask {
 
   /** called when the task is initially scheduled. */
   public ActorFuture<Void> onTaskScheduled(
-          final ActorExecutor actorExecutor, final ActorThreadGroup actorThreadGroup) {
+      final ActorExecutor actorExecutor, final ActorThreadGroup actorThreadGroup) {
     this.actorExecutor = actorExecutor;
     this.actorThreadGroup = actorThreadGroup;
     // reset previous state to allow re-scheduling

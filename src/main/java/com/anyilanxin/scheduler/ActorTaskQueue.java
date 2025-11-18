@@ -16,9 +16,9 @@
  */
 package com.anyilanxin.scheduler;
 
-import org.agrona.concurrent.ManyToOneConcurrentLinkedQueue;
-
 import static org.agrona.UnsafeAccess.UNSAFE;
+
+import org.agrona.concurrent.ManyToOneConcurrentLinkedQueue;
 
 @SuppressWarnings("restriction")
 class ActorTaskQueueNode {

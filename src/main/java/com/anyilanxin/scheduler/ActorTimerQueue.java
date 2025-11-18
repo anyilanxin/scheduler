@@ -17,10 +17,9 @@
 package com.anyilanxin.scheduler;
 
 import com.anyilanxin.scheduler.clock.ActorClock;
+import java.util.concurrent.TimeUnit;
 import org.agrona.DeadlineTimerWheel;
 import org.agrona.collections.Long2ObjectHashMap;
-
-import java.util.concurrent.TimeUnit;
 
 public class ActorTimerQueue extends DeadlineTimerWheel {
   private static final int DEFAULT_TICKS_PER_WHEEL = 32;

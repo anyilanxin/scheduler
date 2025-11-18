@@ -20,7 +20,6 @@ import com.anyilanxin.scheduler.ActorControl;
 import com.anyilanxin.scheduler.exception.RecoverableException;
 import com.anyilanxin.scheduler.future.ActorFuture;
 import com.anyilanxin.scheduler.future.CompletableActorFuture;
-
 import java.util.function.BooleanSupplier;
 
 public class RecoverableRetryStrategy implements RetryStrategy {
@@ -30,9 +29,9 @@ public class RecoverableRetryStrategy implements RetryStrategy {
   private CompletableActorFuture<Boolean> currentFuture;
   private BooleanSupplier terminateCondition;
 
-    public RecoverableRetryStrategy(final ActorControl actor) {
+  public RecoverableRetryStrategy(final ActorControl actor) {
     this.actor = actor;
-        retryMechanism = new ActorRetryMechanism(actor);
+    retryMechanism = new ActorRetryMechanism(actor);
   }
 
   @Override
@@ -41,7 +40,8 @@ public class RecoverableRetryStrategy implements RetryStrategy {
   }
 
   @Override
-  public ActorFuture<Boolean> runWithRetry(final OperationToRetry callable, final BooleanSupplier condition) {
+  public ActorFuture<Boolean> runWithRetry(
+      final OperationToRetry callable, final BooleanSupplier condition) {
     currentFuture = new CompletableActorFuture<>();
     terminateCondition = condition;
     retryMechanism.wrap(callable, terminateCondition, currentFuture);

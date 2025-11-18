@@ -30,7 +30,7 @@ public class IoThreadGroup extends ActorThreadGroup {
 
   @Override
   protected TaskScheduler createTaskScheduler(
-          final MultiLevelWorkstealingGroup tasks, final ActorSchedulerBuilder builder) {
+      final MultiLevelWorkstealingGroup tasks, final ActorSchedulerBuilder builder) {
     return new IoScheduler(tasks);
   }
 

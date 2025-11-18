@@ -19,7 +19,6 @@ package com.anyilanxin.scheduler;
 import com.anyilanxin.scheduler.ActorTask.TaskSchedulingState;
 import com.anyilanxin.scheduler.future.ActorFuture;
 import com.anyilanxin.scheduler.future.CompletableActorFuture;
-
 import java.util.concurrent.Callable;
 
 @SuppressWarnings({"unchecked", "rawtypes"})

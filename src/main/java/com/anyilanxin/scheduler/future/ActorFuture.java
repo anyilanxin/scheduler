@@ -17,7 +17,6 @@
 package com.anyilanxin.scheduler.future;
 
 import com.anyilanxin.scheduler.ActorTask;
-
 import java.util.concurrent.Future;
 
 /** interface for actor futures */

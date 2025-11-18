@@ -19,7 +19,6 @@ package com.anyilanxin.scheduler.retry;
 import com.anyilanxin.scheduler.ActorControl;
 import com.anyilanxin.scheduler.future.ActorFuture;
 import com.anyilanxin.scheduler.future.CompletableActorFuture;
-
 import java.time.Duration;
 import java.util.function.BooleanSupplier;
 
@@ -45,7 +44,7 @@ public class BackOffRetryStrategy implements RetryStrategy {
 
   @Override
   public ActorFuture<Boolean> runWithRetry(
-          final OperationToRetry callable, final BooleanSupplier terminateCondition) {
+      final OperationToRetry callable, final BooleanSupplier terminateCondition) {
     currentFuture = new CompletableActorFuture<>();
     currentTerminateCondition = terminateCondition;
     currentCallable = callable;

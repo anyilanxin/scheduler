@@ -16,12 +16,11 @@
  */
 package com.anyilanxin.scheduler;
 
-import com.anyilanxin.scheduler.clock.ActorClock;
+import static java.lang.Math.floorMod;
 
+import com.anyilanxin.scheduler.clock.ActorClock;
 import java.util.concurrent.TimeUnit;
 import java.util.function.IntFunction;
-
-import static java.lang.Math.floorMod;
 
 /**
  * Logic and state for the priority scheduling. Each {@link ActorThread} maintains a local instance

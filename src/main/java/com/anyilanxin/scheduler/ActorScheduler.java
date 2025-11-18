@@ -18,7 +18,6 @@ package com.anyilanxin.scheduler;
 
 import com.anyilanxin.scheduler.clock.ActorClock;
 import com.anyilanxin.scheduler.future.ActorFuture;
-
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.concurrent.*;
@@ -145,12 +144,14 @@ public class ActorScheduler {
       return this;
     }
 
-    public ActorSchedulerBuilder setActorThreadFactory(final ActorThreadFactory actorThreadFactory) {
+    public ActorSchedulerBuilder setActorThreadFactory(
+        final ActorThreadFactory actorThreadFactory) {
       this.actorThreadFactory = actorThreadFactory;
       return this;
     }
 
-    public ActorSchedulerBuilder setBlockingTasksShutdownTime(final Duration blockingTasksShutdownTime) {
+    public ActorSchedulerBuilder setBlockingTasksShutdownTime(
+        final Duration blockingTasksShutdownTime) {
       this.blockingTasksShutdownTime = blockingTasksShutdownTime;
       return this;
     }
@@ -269,12 +270,12 @@ public class ActorScheduler {
     @java.lang.Override
     @Override
     public ActorThread newThread(
-            final String name,
-            final int id,
-            final ActorThreadGroup threadGroup,
-            final TaskScheduler taskScheduler,
-            final ActorClock clock,
-            final ActorTimerQueue timerQueue) {
+        final String name,
+        final int id,
+        final ActorThreadGroup threadGroup,
+        final TaskScheduler taskScheduler,
+        final ActorClock clock,
+        final ActorTimerQueue timerQueue) {
       return new ActorThread(name, id, threadGroup, taskScheduler, clock, timerQueue);
     }
   }

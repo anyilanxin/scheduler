@@ -24,7 +24,8 @@ public class ActorFutureSubscription implements ActorSubscription {
   private final ActorFuture<?> future;
   private final int phaseMask;
 
-  public ActorFutureSubscription(final ActorFuture<?> future, final ActorJob callbackJob, final int phaseMask) {
+  public ActorFutureSubscription(
+      final ActorFuture<?> future, final ActorJob callbackJob, final int phaseMask) {
     this.future = future;
     this.callbackJob = callbackJob;
     this.phaseMask = phaseMask;

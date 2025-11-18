@@ -16,12 +16,12 @@
  */
 package com.anyilanxin.scheduler.channel;
 
+import static org.agrona.UnsafeAccess.UNSAFE;
+
 import com.anyilanxin.scheduler.ActorCondition;
 import com.anyilanxin.scheduler.ActorJob;
 import com.anyilanxin.scheduler.ActorSubscription;
 import com.anyilanxin.scheduler.ActorTask;
-
-import static org.agrona.UnsafeAccess.UNSAFE;
 
 @SuppressWarnings("restriction")
 public class ChannelConsumerCondition

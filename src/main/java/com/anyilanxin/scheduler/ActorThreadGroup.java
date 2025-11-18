@@ -17,7 +17,6 @@
 package com.anyilanxin.scheduler;
 
 import com.anyilanxin.scheduler.ActorScheduler.ActorSchedulerBuilder;
-
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -34,7 +33,10 @@ public abstract class ActorThreadGroup {
   protected final MultiLevelWorkstealingGroup tasks;
 
   public ActorThreadGroup(
-          final String groupName, final int numOfThreads, final int numOfQueuesPerThread, final ActorSchedulerBuilder builder) {
+      final String groupName,
+      final int numOfThreads,
+      final int numOfQueuesPerThread,
+      final ActorSchedulerBuilder builder) {
     this.groupName = groupName;
     this.numOfThreads = numOfThreads;
 

@@ -31,7 +31,8 @@ public class TimerSubscription implements ActorSubscription, ScheduledTimer, Run
   private long timerId = -1L;
   private ActorThread thread;
 
-  public TimerSubscription(final ActorJob job, final long deadline, final TimeUnit timeUnit, final boolean isRecurring) {
+  public TimerSubscription(
+      final ActorJob job, final long deadline, final TimeUnit timeUnit, final boolean isRecurring) {
     this.job = job;
     task = job.getTask();
     this.timeUnit = timeUnit;

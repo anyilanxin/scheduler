@@ -16,7 +16,6 @@
  */
 package com.anyilanxin.scheduler;
 
-
 import java.util.concurrent.Future;
 
 public class FutureUtil {

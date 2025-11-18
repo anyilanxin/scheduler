@@ -18,7 +18,6 @@ package com.anyilanxin.scheduler;
 
 import com.anyilanxin.scheduler.ActorScheduler.ActorSchedulerBuilder;
 import com.anyilanxin.scheduler.future.ActorFuture;
-
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadPoolExecutor;
