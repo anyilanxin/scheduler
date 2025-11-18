@@ -111,7 +111,7 @@ afterEvaluate {
                 artifact sourcesJar
                 pom {
                     name = currentArchiveBaseName
-                    url = 'https://github.com/anyilanxin/msgpack.git'
+                    url = 'https://github.com/anyilanxin/scheduler.git'
                     description = project.description
                     developers {
                         developer {
@@ -125,27 +125,27 @@ afterEvaluate {
                         if (licenseType == 'mpl') {
                             license {
                                 name = 'MPL-2.0'
-                                url = 'https://github.com/anyilanxin/msgpack/blob/master/licenses/MPL-2.0.txt'
+                                url = 'https://github.com/anyilanxin/scheduler/blob/master/licenses/MPL-2.0.txt'
                             }
                         } else if (licenseType == 'apache,mpl') {
                             license {
                                 name = 'APACHE-2.0'
-                                url = 'https://github.com/anyilanxin/msgpack/blob/master/licenses/APACHE-2.0.txt'
+                                url = 'https://github.com/anyilanxin/scheduler/blob/master/licenses/APACHE-2.0.txt'
                             }
                             license {
                                 name = 'MPL-2.0'
-                                url = 'https://github.com/anyilanxin/msgpack/blob/master/licenses/MPL-2.0.txt'
+                                url = 'https://github.com/anyilanxin/scheduler/blob/master/licenses/MPL-2.0.txt'
                             }
                         } else {
                             license {
                                 name = 'AGPL-3.0'
-                                url = 'https://github.com/anyilanxin/msgpack/blob/master/licenses/GNU-AGPL-3.0.txt'
+                                url = 'https://github.com/anyilanxin/scheduler/blob/master/licenses/GNU-AGPL-3.0.txt'
                             }
                         }
                     }
                     scm {
-                        connection = 'scm:git:git://github.com/anyilanxin/msgpack.gi'
-                        developerConnection = 'scm:git:ssh://github.com/anyilanxin/msgpack.gi'
+                        connection = 'scm:git:git://github.com/anyilanxin/scheduler.gi'
+                        developerConnection = 'scm:git:ssh://github.com/anyilanxin/scheduler.gi'
                         url = 'https://anyilanxin.com'
                     }
                 }
