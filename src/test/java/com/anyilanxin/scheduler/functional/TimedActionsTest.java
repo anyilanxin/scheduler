@@ -16,18 +16,16 @@
  */
 package com.anyilanxin.scheduler.functional;
 
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-
 import com.anyilanxin.scheduler.Actor;
 import com.anyilanxin.scheduler.ScheduledTimer;
 import com.anyilanxin.scheduler.testing.ControlledActorSchedulerRule;
-import java.time.Duration;
-import java.util.concurrent.atomic.AtomicReference;
 import org.junit.Rule;
 import org.junit.Test;
+
+import java.time.Duration;
+import java.util.concurrent.atomic.AtomicReference;
+
+import static org.mockito.Mockito.*;
 
 public class TimedActionsTest {
   @Rule
@@ -41,7 +39,7 @@ public class TimedActionsTest {
         new Actor() {
           @Override
           protected void onActorStarted() {
-            actor.runDelayed(Duration.ofMillis(10), action);
+              actor.schedule(Duration.ofMillis(10), action);
           }
         };
 
@@ -62,7 +60,7 @@ public class TimedActionsTest {
         new Actor() {
           @Override
           protected void onActorStarted() {
-            actor.runDelayed(Duration.ofMillis(10), action);
+              actor.schedule(Duration.ofMillis(10), action);
           }
         };
 
@@ -116,7 +114,7 @@ public class TimedActionsTest {
         new Actor() {
           @Override
           protected void onActorStarted() {
-            timer.set(actor.runDelayed(Duration.ofMillis(10), action));
+              timer.set(actor.schedule(Duration.ofMillis(10), action));
           }
         };
 
@@ -141,7 +139,7 @@ public class TimedActionsTest {
         new Actor() {
           @Override
           protected void onActorStarted() {
-            timer.set(actor.runDelayed(Duration.ofMillis(10), action));
+              timer.set(actor.schedule(Duration.ofMillis(10), action));
           }
         };
 

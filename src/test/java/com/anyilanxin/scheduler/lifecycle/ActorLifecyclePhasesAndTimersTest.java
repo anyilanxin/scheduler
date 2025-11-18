@@ -16,15 +16,14 @@
  */
 package com.anyilanxin.scheduler.lifecycle;
 
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-
 import com.anyilanxin.scheduler.future.CompletableActorFuture;
 import com.anyilanxin.scheduler.testing.ControlledActorSchedulerRule;
-import java.time.Duration;
 import org.junit.Rule;
 import org.junit.Test;
+
+import java.time.Duration;
+
+import static org.mockito.Mockito.*;
 
 public class ActorLifecyclePhasesAndTimersTest {
   @Rule
@@ -39,7 +38,7 @@ public class ActorLifecyclePhasesAndTimersTest {
         new LifecycleRecordingActor() {
           @Override
           public void onActorStarting() {
-            actor.runDelayed(Duration.ofMillis(10), action);
+              actor.schedule(Duration.ofMillis(10), action);
             blockPhase();
           }
         };
@@ -64,7 +63,7 @@ public class ActorLifecyclePhasesAndTimersTest {
         new LifecycleRecordingActor() {
           @Override
           public void onActorStarting() {
-            actor.runDelayed(Duration.ofMillis(10), action);
+              actor.schedule(Duration.ofMillis(10), action);
             blockPhase(future);
           }
         };
@@ -91,7 +90,7 @@ public class ActorLifecyclePhasesAndTimersTest {
         new LifecycleRecordingActor() {
           @Override
           public void onActorStarted() {
-            actor.runDelayed(Duration.ofMillis(10), action);
+              actor.schedule(Duration.ofMillis(10), action);
           }
         };
     schedulerRule.submitActor(actor);
@@ -115,7 +114,7 @@ public class ActorLifecyclePhasesAndTimersTest {
           @Override
           public void onActorCloseRequested() {
             blockPhase();
-            actor.runDelayed(Duration.ofMillis(10), action);
+              actor.schedule(Duration.ofMillis(10), action);
           }
         };
     schedulerRule.submitActor(actor);
@@ -140,7 +139,7 @@ public class ActorLifecyclePhasesAndTimersTest {
           @Override
           public void onActorClosing() {
             blockPhase();
-            actor.runDelayed(Duration.ofMillis(10), action);
+              actor.schedule(Duration.ofMillis(10), action);
           }
         };
     schedulerRule.submitActor(actor);

@@ -79,6 +79,6 @@ public class BackOffRetryStrategy implements RetryStrategy {
       final Duration nextBackOff = backOffDuration.multipliedBy(2);
       backOffDuration = nextBackOff.compareTo(maxBackOff) < 0 ? nextBackOff : maxBackOff;
     }
-    actor.runDelayed(backOffDuration, this::run);
+    actor.schedule(backOffDuration, this::run);
   }
 }

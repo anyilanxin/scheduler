@@ -24,7 +24,6 @@ import com.anyilanxin.scheduler.future.ActorFuture;
 import com.anyilanxin.scheduler.future.AllCompletedFutureConsumer;
 import com.anyilanxin.scheduler.future.FirstSuccessfullyCompletedFutureConsumer;
 import com.anyilanxin.scheduler.future.FutureContinuationRunnable;
-
 import java.time.Duration;
 import java.util.Collection;
 import java.util.concurrent.Callable;
