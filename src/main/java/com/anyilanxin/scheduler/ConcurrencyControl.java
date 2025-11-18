@@ -18,97 +18,101 @@ package com.anyilanxin.scheduler;
 
 import com.anyilanxin.scheduler.future.ActorFuture;
 import com.anyilanxin.scheduler.future.CompletableActorFuture;
-import org.jetbrains.annotations.NotNull;
-
 import java.time.Duration;
 import java.util.Collection;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import org.jetbrains.annotations.NotNull;
 
+/**
+ * Concurrency control interface
+ *
+ * @author zxuanhong
+ * @date 2025/11/18
+ */
 public interface ConcurrencyControl extends Executor {
-    /**
-     * Invoke the callback when the given future is completed (successfully or exceptionally). This
-     * call does not block the actor. If close is requested the actor will not wait on this future, in
-     * this case the callback is never called.
-     *
-     * <p>The callback is is executed while the actor is in the following actor lifecycle phases:
-     * {@link ActorTask.ActorLifecyclePhase#STARTED}
-     *
-     * @param future   the future to wait on
-     * @param callback the callback that handle the future's result. The throwable is <code>null
-     *                 </code> when the future is completed successfully.
-     */
-    <T> void runOnCompletion(final ActorFuture<T> future, final BiConsumer<T, Throwable> callback);
+  /**
+   * Invoke the callback when the given future is completed (successfully or exceptionally). This
+   * call does not block the actor. If close is requested the actor will not wait on this future, in
+   * this case the callback is never called.
+   *
+   * <p>The callback is is executed while the actor is in the following actor lifecycle phases:
+   * {@link ActorTask.ActorLifecyclePhase#STARTED}
+   *
+   * @param future the future to wait on
+   * @param callback the callback that handle the future's result. The throwable is <code>null
+   *                 </code> when the future is completed successfully.
+   */
+  <T> void runOnCompletion(final ActorFuture<T> future, final BiConsumer<T, Throwable> callback);
 
-    /**
-     * Invoke the callback when the given futures are completed (successfully or exceptionally). This
-     * call does not block the actor.
-     *
-     * <p>The callback is is executed while the actor is in the following actor lifecycle phases:
-     * {@link ActorTask.ActorLifecyclePhase#STARTED}
-     *
-     * @param futures  the futures to wait on
-     * @param callback The throwable is <code>null</code> when all futures are completed successfully.
-     *                 Otherwise, it holds the exception of the last completed future.
-     */
-    <T> void runOnCompletion(
-            final Collection<ActorFuture<T>> futures, final Consumer<Throwable> callback);
+  /**
+   * Invoke the callback when the given futures are completed (successfully or exceptionally). This
+   * call does not block the actor.
+   *
+   * <p>The callback is is executed while the actor is in the following actor lifecycle phases:
+   * {@link ActorTask.ActorLifecyclePhase#STARTED}
+   *
+   * @param futures the futures to wait on
+   * @param callback The throwable is <code>null</code> when all futures are completed successfully.
+   *     Otherwise, it holds the exception of the last completed future.
+   */
+  <T> void runOnCompletion(
+      final Collection<ActorFuture<T>> futures, final Consumer<Throwable> callback);
 
+  /**
+   * Runnables submitted by the actor itself are executed while the actor is in any of its lifecycle
+   * phases.
+   *
+   * <p>Runnables submitted externally are executed while the actor is in the following actor
+   * lifecycle phases: {@link ActorTask.ActorLifecyclePhase#STARTED}
+   *
+   * @param action
+   */
+  void run(final Runnable action);
 
-    /**
-     * Runnables submitted by the actor itself are executed while the actor is in any of its lifecycle
-     * phases.
-     *
-     * <p>Runnables submitted externally are executed while the actor is in the following actor
-     * lifecycle phases: {@link ActorTask.ActorLifecyclePhase#STARTED}
-     *
-     * @param action
-     */
-    void run(final Runnable action);
+  /**
+   * Callables actions are called while the actor is in the following actor lifecycle phases: {@link
+   * ActorTask.ActorLifecyclePhase#STARTED}
+   *
+   * @param callable
+   * @return
+   */
+  <T> ActorFuture<T> call(final Callable<T> callable);
 
-    /**
-     * Callables actions are called while the actor is in the following actor lifecycle phases: {@link
-     * ActorTask.ActorLifecyclePhase#STARTED}
-     *
-     * @param callable
-     * @return
-     */
-    <T> ActorFuture<T> call(final Callable<T> callable);
+  /**
+   * The runnable is is executed while the actor is in the following actor lifecycle phases: {@link
+   * ActorTask.ActorLifecyclePhase#STARTED}
+   *
+   * @param delay
+   * @param runnable
+   * @return
+   */
+  ScheduledTimer runDelayed(final Duration delay, final Runnable runnable);
 
-    /**
-     * The runnable is is executed while the actor is in the following actor lifecycle phases: {@link
-     * ActorTask.ActorLifecyclePhase#STARTED}
-     *
-     * @param delay
-     * @param runnable
-     * @return
-     */
-    ScheduledTimer runDelayed(final Duration delay, final Runnable runnable);
+  /**
+   * Create a new future object
+   *
+   * @param <V> value type of future
+   * @return new future object
+   */
+  default <V> ActorFuture<V> createFuture() {
+    return new CompletableActorFuture<>();
+  }
 
-    /**
-     * Create a new future object
-     *
-     * @param <V> value type of future
-     * @return new future object
-     */
-    default <V> ActorFuture<V> createFuture() {
-        return new CompletableActorFuture<>();
-    }
+  /**
+   * Create a new completed future object
+   *
+   * @param <V> value type of future
+   * @return new completed future object
+   */
+  default <V> ActorFuture<V> createCompletedFuture() {
+    return CompletableActorFuture.completed(null);
+  }
 
-    /**
-     * Create a new completed future object
-     *
-     * @param <V> value type of future
-     * @return new completed future object
-     */
-    default <V> ActorFuture<V> createCompletedFuture() {
-        return CompletableActorFuture.completed(null);
-    }
-
-    @Override
-    default void execute(@NotNull final Runnable command) {
-        run(command);
-    }
+  @Override
+  default void execute(@NotNull final Runnable command) {
+    run(command);
+  }
 }

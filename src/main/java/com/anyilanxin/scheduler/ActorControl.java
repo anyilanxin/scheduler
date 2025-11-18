@@ -24,7 +24,6 @@ import com.anyilanxin.scheduler.future.ActorFuture;
 import com.anyilanxin.scheduler.future.AllCompletedFutureConsumer;
 import com.anyilanxin.scheduler.future.FirstSuccessfullyCompletedFutureConsumer;
 import com.anyilanxin.scheduler.future.FutureContinuationRunnable;
-
 import java.time.Duration;
 import java.util.Collection;
 import java.util.concurrent.Callable;
@@ -33,6 +32,7 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+/** ActorControl provides methods to interact with the actor. */
 public class ActorControl implements ConcurrencyControl {
   private final Actor actor;
 
