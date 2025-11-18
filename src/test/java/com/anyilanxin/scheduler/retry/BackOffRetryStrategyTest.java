@@ -16,21 +16,22 @@
  */
 package com.anyilanxin.scheduler.retry;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import com.anyilanxin.scheduler.Actor;
 import com.anyilanxin.scheduler.ActorControl;
 import com.anyilanxin.scheduler.clock.ActorClock;
 import com.anyilanxin.scheduler.future.ActorFuture;
 import com.anyilanxin.scheduler.testing.ControlledActorSchedulerRule;
+import org.junit.Before;
+import org.junit.Rule;
+import org.junit.Test;
+
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class BackOffRetryStrategyTest {
 
@@ -189,11 +190,11 @@ public class BackOffRetryStrategyTest {
     assertThat(resultFuture.get()).isTrue();
 
     final long beforeLastCall = callRecorder.get(callRecorder.size() - 2);
-    final long lastCall = callRecorder.get(callRecorder.size() - 1);
+      final long lastCall = callRecorder.getLast();
     assertThat(lastCall - beforeLastCall).isBetween(10_000L, 10_500L);
   }
 
-  private final class ControllableActor extends Actor {
+    private static final class ControllableActor extends Actor {
     public ActorControl getActor() {
       return actor;
     }

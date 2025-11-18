@@ -16,22 +16,19 @@
  */
 package com.anyilanxin.scheduler.lifecycle;
 
-import static com.anyilanxin.scheduler.ActorTask.ActorLifecyclePhase.CLOSED;
-import static com.anyilanxin.scheduler.ActorTask.ActorLifecyclePhase.CLOSE_REQUESTED;
-import static com.anyilanxin.scheduler.ActorTask.ActorLifecyclePhase.CLOSING;
-import static com.anyilanxin.scheduler.ActorTask.ActorLifecyclePhase.STARTED;
-import static com.anyilanxin.scheduler.ActorTask.ActorLifecyclePhase.STARTING;
-import static org.assertj.core.util.Lists.newArrayList;
-import static org.mockito.Mockito.mock;
-
 import com.anyilanxin.scheduler.Actor;
 import com.anyilanxin.scheduler.ActorControl;
 import com.anyilanxin.scheduler.ActorTask.ActorLifecyclePhase;
 import com.anyilanxin.scheduler.future.ActorFuture;
 import com.anyilanxin.scheduler.future.CompletableActorFuture;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiConsumer;
+
+import static com.anyilanxin.scheduler.ActorTask.ActorLifecyclePhase.*;
+import static org.assertj.core.util.Lists.newArrayList;
+import static org.mockito.Mockito.mock;
 
 class LifecycleRecordingActor extends Actor {
   public static final List<ActorLifecyclePhase> FULL_LIFECYCLE =
@@ -64,25 +61,26 @@ class LifecycleRecordingActor extends Actor {
     phases.add(actor.getLifecyclePhase());
   }
 
-  @Override
-  public ActorFuture<Void> close() {
-    return actor.close();
+
+    @Override
+    public void close() {
+        actor.close();
   }
 
   protected void blockPhase() {
     blockPhase(new CompletableActorFuture<>(), mock(BiConsumer.class));
   }
 
-  protected void blockPhase(BiConsumer consumer) {
+    protected void blockPhase(final BiConsumer consumer) {
     blockPhase(new CompletableActorFuture<>(), consumer);
   }
 
-  protected void blockPhase(ActorFuture<Void> future) {
+    protected void blockPhase(final ActorFuture<Void> future) {
     blockPhase(future, mock(BiConsumer.class));
   }
 
   @SuppressWarnings("unchecked")
-  protected void blockPhase(ActorFuture<Void> future, BiConsumer consumer) {
+  protected void blockPhase(final ActorFuture<Void> future, final BiConsumer consumer) {
     actor.runOnCompletionBlockingCurrentPhase(future, consumer);
   }
 
@@ -92,17 +90,12 @@ class LifecycleRecordingActor extends Actor {
   }
 
   @SuppressWarnings("unchecked")
-  protected void runOnCompletion(ActorFuture<Void> future, BiConsumer consumer) {
-    actor.runOnCompletion(future, consumer);
-  }
-
-  @SuppressWarnings("unchecked")
-  protected void runOnCompletion(BiConsumer consumer) {
+  protected void runOnCompletion(final BiConsumer consumer) {
     actor.runOnCompletion(new CompletableActorFuture<>(), consumer);
   }
 
   @SuppressWarnings("unchecked")
-  protected void runOnCompletion(ActorFuture<Void> future) {
+  protected void runOnCompletion(final ActorFuture<Void> future) {
     actor.runOnCompletion(future, mock(BiConsumer.class));
   }
 

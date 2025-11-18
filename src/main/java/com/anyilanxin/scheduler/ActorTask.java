@@ -298,8 +298,8 @@ public class ActorTask {
   private void onClosed() {
     schedulingState = TaskSchedulingState.NOT_SCHEDULED;
 
-    for (int i = 0; i < subscriptions.length; i++) {
-      subscriptions[i].cancel();
+    for (final ActorSubscription subscription : subscriptions) {
+      subscription.cancel();
     }
 
     subscriptions = new ActorSubscription[0];
@@ -411,9 +411,7 @@ public class ActorTask {
     if ((lifecyclePhase == ActorLifecyclePhase.STARTED && !submittedJobs.isEmpty())
         || pollSubscriptionsWithoutAddingJobs(subscriptionsCopy)) {
       // could be that another thread already woke up this task
-      if (casState(TaskSchedulingState.WAITING, TaskSchedulingState.WAKING_UP)) {
-        return true;
-      }
+      return casState(TaskSchedulingState.WAITING, TaskSchedulingState.WAKING_UP);
     }
 
     return false;
@@ -442,9 +440,7 @@ public class ActorTask {
   private boolean pollSubscriptions() {
     boolean hasJobs = false;
 
-    for (int i = 0; i < subscriptions.length; i++) {
-      final ActorSubscription subscription = subscriptions[i];
-
+    for (final ActorSubscription subscription : subscriptions) {
       if (pollSubscription(subscription)) {
         final ActorJob job = subscription.getJob();
         job.schedulingState = TaskSchedulingState.QUEUED;

@@ -150,13 +150,14 @@ public class ConditionalActionsTest {
             condition.set(actor.onCondition("foo", this::onCondition));
           }
 
-          protected void onCondition() {
+            private void onCondition() {
             invocations.incrementAndGet();
             actor.run(this::doNothing);
               actor.yieldThread();
           }
 
-          protected void doNothing() {}
+            private void doNothing() {
+            }
         };
 
     scheduler.submitActor(actor);

@@ -16,19 +16,20 @@
  */
 package com.anyilanxin.scheduler.iobound;
 
-import static com.anyilanxin.scheduler.SchedulingHints.ioBound;
-import static org.assertj.core.api.Assertions.assertThat;
-
 import com.anyilanxin.scheduler.Actor;
 import com.anyilanxin.scheduler.ActorThread;
 import com.anyilanxin.scheduler.ActorThreadGroup;
 import com.anyilanxin.scheduler.CpuThreadGroup;
 import com.anyilanxin.scheduler.future.ActorFuture;
 import com.anyilanxin.scheduler.testing.ActorSchedulerRule;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 import org.junit.Rule;
 import org.junit.Test;
+
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+
+import static com.anyilanxin.scheduler.SchedulingHints.ioBound;
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class IoBoundActorsIntegrationTest {
   @Rule public ActorSchedulerRule schedulerRule = new ActorSchedulerRule();
@@ -73,7 +74,7 @@ public class IoBoundActorsIntegrationTest {
             }
           }
 
-          protected void callback(Void res, Throwable t) {
+            private void callback(final Void res, final Throwable t) {
             if (ActorThread.current().getActorThreadGroup() != ioBoundActorThreads) {
               isOnWrongThreadGroup.set(true);
             }
@@ -105,7 +106,7 @@ public class IoBoundActorsIntegrationTest {
             }
           }
 
-          protected void callback(Void res, Throwable t) {
+            private void callback(final Void res, final Throwable t) {
             if (ActorThread.current().getActorThreadGroup() != ioBoundActorThreads) {
               isOnWrongThreadGroup.set(true);
             }
@@ -120,10 +121,10 @@ public class IoBoundActorsIntegrationTest {
     assertThat(isOnWrongThreadGroup).isFalse();
   }
 
-  class CallableActor extends Actor {
-    private AtomicBoolean isOnWrongThreadGroup;
+    static class CallableActor extends Actor {
+        private final AtomicBoolean isOnWrongThreadGroup;
 
-    CallableActor(AtomicBoolean isOnWrongThreadGroup) {
+        CallableActor(final AtomicBoolean isOnWrongThreadGroup) {
       this.isOnWrongThreadGroup = isOnWrongThreadGroup;
     }
 

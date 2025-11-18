@@ -43,6 +43,11 @@ public class ActorControl implements ConcurrencyControl {
     task = new ActorTask(actor);
   }
 
+  private ActorControl(final ActorTask task) {
+    actor = task.actor;
+    this.task = task;
+  }
+
   /**
    * changes the actor's scheduling hints. For example, this makes it possible to transform a
    * cpu-bound actor into an io-bound actor and vice versa.
@@ -52,6 +57,12 @@ public class ActorControl implements ConcurrencyControl {
   public void setSchedulingHints(final int hints) {
     ensureCalledFromWithinActor("resubmit(...)");
     task.setUpdatedSchedulingHints(hints);
+  }
+
+  public static ActorControl current() {
+    final ActorThread actorThread = ensureCalledFromActorThread("ActorControl#current");
+
+    return new ActorControl(actorThread.currentTask);
   }
 
   /**
@@ -512,7 +523,7 @@ public class ActorControl implements ConcurrencyControl {
     return currentJob;
   }
 
-  private ActorThread ensureCalledFromActorThread(final String methodName) {
+  private static ActorThread ensureCalledFromActorThread(final String methodName) {
     final ActorThread thread = ActorThread.current();
 
     if (thread == null) {
@@ -521,5 +532,10 @@ public class ActorControl implements ConcurrencyControl {
     }
 
     return thread;
+  }
+
+  @Override
+  public <V> ActorFuture<V> createFuture() {
+    return ConcurrencyControl.super.createFuture();
   }
 }

@@ -21,10 +21,6 @@ import java.util.concurrent.atomic.AtomicReference;
 
 public class ActorConditions {
 
-  /**
-   * For reference see {@link java.nio.Bits#JNI_COPY_TO_ARRAY_THRESHOLD} and {@link
-   * java.nio.DirectByteBuffer#get(byte[], int, int)}
-   */
   private static final int JNI_COPY_TO_ARRAY_THRESHOLD = 6;
 
   private static final ActorCondition[] EMPTY_ARRAY = new ActorCondition[0];
@@ -78,8 +74,8 @@ public class ActorConditions {
     // please do not remove me, array ref may be replaced concurrently
     final ActorCondition[] consumer = arrayRef.get();
 
-    for (int i = 0; i < consumer.length; i++) {
-      consumer[i].signal();
+    for (ActorCondition actorCondition : consumer) {
+      actorCondition.signal();
     }
   }
 

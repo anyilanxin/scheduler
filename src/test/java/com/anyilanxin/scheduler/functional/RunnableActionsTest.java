@@ -98,7 +98,7 @@ public class RunnableActionsTest {
     // given
     final List<Actor> actorContext = new ArrayList<>();
     final Runner runner =
-        new Runner(() -> actorContext.add(ActorThread.current().getCurrentTask().getActor()));
+            new Runner(() -> actorContext.add(ActorThread.current().getCurrentTask().getActor()));
 
     final Actor invoker =
         new Actor() {
@@ -204,13 +204,13 @@ public class RunnableActionsTest {
     assertThat(exceptionOnSubmit).isFalse();
   }
 
-  class Submitter extends Actor {
+    static class Submitter extends Actor {
       public void submit(final Runnable r) {
           actor.submit(r);
     }
   }
 
-  class Runner extends Actor {
+    static class Runner extends Actor {
     int runs = 0;
     Runnable onExecution;
 

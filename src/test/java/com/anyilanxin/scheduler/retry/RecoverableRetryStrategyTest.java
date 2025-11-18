@@ -16,18 +16,19 @@
  */
 package com.anyilanxin.scheduler.retry;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
-import com.anyilanxin.scheduler.exception.RecoverableException;
 import com.anyilanxin.scheduler.Actor;
 import com.anyilanxin.scheduler.ActorControl;
+import com.anyilanxin.scheduler.exception.RecoverableException;
 import com.anyilanxin.scheduler.future.ActorFuture;
 import com.anyilanxin.scheduler.testing.ControlledActorSchedulerRule;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
+
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 public class RecoverableRetryStrategyTest {
 
@@ -74,7 +75,7 @@ public class RecoverableRetryStrategyTest {
     assertThat(resultFuture.get()).isTrue();
   }
 
-  private final class ControllableActor extends Actor {
+    private static final class ControllableActor extends Actor {
     public ActorControl getActor() {
       return actor;
     }

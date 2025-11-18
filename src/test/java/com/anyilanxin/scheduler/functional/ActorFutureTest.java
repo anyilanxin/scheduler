@@ -218,8 +218,8 @@ public class ActorFutureTest {
 
     // then
     assertThat(invocations).hasSize(1);
-    assertThat(invocations.get(0).getLeft()).isNull();
-    assertThat(invocations.get(0).getRight().getMessage()).isEqualTo("bar");
+      assertThat(invocations.getFirst().getLeft()).isNull();
+      assertThat(invocations.getFirst().getRight().getMessage()).isEqualTo("bar");
   }
 
   @Test
@@ -344,7 +344,7 @@ public class ActorFutureTest {
         new Actor() {
           @Override
           protected void onActorStarted() {
-            actor.runOnCompletion(Arrays.asList(future1, future2), t -> invocations.add(t));
+              actor.runOnCompletion(Arrays.asList(future1, future2), invocations::add);
           }
         };
 
@@ -366,7 +366,7 @@ public class ActorFutureTest {
 
     // then
     assertThat(invocations).hasSize(1);
-    assertThat(invocations.get(0).getMessage()).isEqualTo("bar");
+      assertThat(invocations.getFirst().getMessage()).isEqualTo("bar");
   }
 
   @Test
@@ -445,7 +445,7 @@ public class ActorFutureTest {
     assertThat(futureResult.get()).isEqualTo("foo");
   }
 
-  class BlockedCallActor extends Actor {
+    static class BlockedCallActor extends Actor {
     public void waitOnFuture() {
       actor.call(
           () -> {
@@ -462,7 +462,7 @@ public class ActorFutureTest {
     }
   }
 
-  class BlockedCallActorWithRunOnCompletion extends Actor {
+    static class BlockedCallActorWithRunOnCompletion extends Actor {
     public void waitOnFuture() {
       actor.call(
           () -> {
@@ -517,7 +517,7 @@ public class ActorFutureTest {
     assertThat(completed).isDone();
     assertThat(completed.isCompletedExceptionally()).isTrue();
 
-    assertThatThrownBy(() -> completed.join()).hasMessageContaining("Something bad happend!");
+      assertThatThrownBy(completed::join).hasMessageContaining("Something bad happend!");
   }
 
   @Test
@@ -572,7 +572,7 @@ public class ActorFutureTest {
 
     // then
     final AbstractThrowableAssert<?, ? extends Throwable> thrownBy =
-        assertThatThrownBy(() -> future.join());
+            assertThatThrownBy(future::join);
     thrownBy.isInstanceOf(ExecutionException.class);
     thrownBy.hasCause(throwable);
   }
@@ -626,7 +626,7 @@ public class ActorFutureTest {
     }.start();
 
     // expect
-    assertThatThrownBy(() -> future.get())
+      assertThatThrownBy(future::get)
         .isInstanceOf(ExecutionException.class)
         .hasMessage("moep");
   }
@@ -702,7 +702,7 @@ public class ActorFutureTest {
         .hasMessageContaining("Throwable must not be null.");
   }
 
-  class TestActor extends Actor {
+    static class TestActor extends Actor {
 
       public <T> void awaitFuture(final ActorFuture<T> f, final BiConsumer<T, Throwable> onCompletion) {
       actor.call(() -> actor.runOnCompletionBlockingCurrentPhase(f, onCompletion));

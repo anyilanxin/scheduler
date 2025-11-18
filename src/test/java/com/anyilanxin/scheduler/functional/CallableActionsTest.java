@@ -16,18 +16,19 @@
  */
 package com.anyilanxin.scheduler.functional;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
 import com.anyilanxin.scheduler.Actor;
 import com.anyilanxin.scheduler.future.ActorFuture;
 import com.anyilanxin.scheduler.testing.ControlledActorSchedulerRule;
+import org.junit.Rule;
+import org.junit.Test;
+
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import org.junit.Rule;
-import org.junit.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class CallableActionsTest {
   @Rule
@@ -66,7 +67,7 @@ public class CallableActionsTest {
 
     // then
     assertThat(future).isDone();
-    assertThatThrownBy(() -> future.get())
+      assertThatThrownBy(future::get)
         .isInstanceOf(ExecutionException.class)
         .hasMessage("Actor is closed");
   }
@@ -85,7 +86,7 @@ public class CallableActionsTest {
 
     // then
     assertThat(future).isDone();
-    assertThatThrownBy(() -> future.get())
+      assertThatThrownBy(future::get)
         .isInstanceOf(ExecutionException.class)
         .hasMessage("Actor is closed");
   }
@@ -93,7 +94,7 @@ public class CallableActionsTest {
   protected static class ExceptionActor extends Actor {
     protected AtomicInteger invocations = new AtomicInteger(0);
 
-    public Future<Void> failWith(Exception e) {
+      public Future<Void> failWith(final Exception e) {
       return actor.call(
           () -> {
             invocations.incrementAndGet();
@@ -102,13 +103,13 @@ public class CallableActionsTest {
     }
   }
 
-  class CloseableActor extends Actor {
+    static class CloseableActor extends Actor {
     ActorFuture<Void> doCall() {
       return actor.call(() -> {});
     }
 
     @Override
-    void close() {
+    public void close() {
       actor.close();
     }
   }

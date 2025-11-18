@@ -100,7 +100,7 @@ public class ActorLifecyclePhasesAndBlockPhaseTest {
     schedulerRule.workUntilDone();
 
     // when
-    final ActorFuture<Void> closeFuture = actor.close();
+      final ActorFuture<Void> closeFuture = actor.closeAsync();
     schedulerRule.workUntilDone();
 
     // then
@@ -124,7 +124,7 @@ public class ActorLifecyclePhasesAndBlockPhaseTest {
         };
     schedulerRule.submitActor(actor);
     schedulerRule.workUntilDone();
-    final ActorFuture<Void> closeFuture = actor.close();
+      final ActorFuture<Void> closeFuture = actor.closeAsync();
     schedulerRule.workUntilDone();
 
     // when
@@ -148,7 +148,7 @@ public class ActorLifecyclePhasesAndBlockPhaseTest {
           }
         };
     schedulerRule.submitActor(actor);
-    final ActorFuture<Void> closeFuture = actor.close();
+      final ActorFuture<Void> closeFuture = actor.closeAsync();
 
     // when
     schedulerRule.workUntilDone();
@@ -179,7 +179,7 @@ public class ActorLifecyclePhasesAndBlockPhaseTest {
     schedulerRule.submitActor(actor);
     schedulerRule.workUntilDone();
 
-    final ActorFuture<Void> closeFuture = actor.close();
+      final ActorFuture<Void> closeFuture = actor.closeAsync();
 
     // when
     trigger.complete(null);

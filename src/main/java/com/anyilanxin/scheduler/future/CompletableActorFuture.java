@@ -16,17 +16,18 @@
  */
 package com.anyilanxin.scheduler.future;
 
-import com.anyilanxin.scheduler.ActorTask;
-import com.anyilanxin.scheduler.ActorThread;
-import com.anyilanxin.scheduler.FutureUtil;
+import com.anyilanxin.scheduler.*;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.util.Queue;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
+import java.util.function.Function;
+import java.util.function.Supplier;
 import org.agrona.concurrent.ManyToOneConcurrentLinkedQueue;
 
 /** Completable future implementation that is garbage free and reusable */
@@ -40,7 +41,7 @@ public class CompletableActorFuture<V> implements ActorFuture<V> {
   private static final int COMPLETED_EXCEPTIONALLY = 4;
   private static final int CLOSED = 5;
 
-  private final ManyToOneConcurrentLinkedQueue<ActorTask> blockedTasks =
+  private final ManyToOneConcurrentLinkedQueue<BiConsumer<V, Throwable>> blockedCallbacks =
       new ManyToOneConcurrentLinkedQueue<>();
 
   private volatile int state = CLOSED;
@@ -106,6 +107,144 @@ public class CompletableActorFuture<V> implements ActorFuture<V> {
   }
 
   @Override
+  public <U> ActorFuture<U> andThen(final Supplier<ActorFuture<U>> next, final Executor executor) {
+    return andThen(
+        ignored -> {
+          try {
+            return next.get();
+          } catch (final Exception e) {
+            return CompletableActorFuture.completedExceptionally(e);
+          }
+        },
+        executor);
+  }
+
+  @Override
+  public <U> ActorFuture<U> andThen(
+      final Function<V, ActorFuture<U>> next, final Executor executor) {
+    return andThen(
+        (v, err) -> {
+          if (err != null) {
+            return CompletableActorFuture.completedExceptionally(err);
+          } else {
+            try {
+              return next.apply(v);
+            } catch (final Exception e) {
+              return CompletableActorFuture.completedExceptionally(e);
+            }
+          }
+        },
+        executor);
+  }
+
+  @Override
+  public <U> ActorFuture<U> andThen(
+      final BiFunction<V, Throwable, ActorFuture<U>> next, final Executor executor) {
+    final ActorFuture<U> nextFuture = new CompletableActorFuture<>();
+    onComplete(
+        (thisResult, thisError) -> {
+          try {
+            final var future = next.apply(thisResult, thisError);
+            future.onComplete(nextFuture, executor);
+          } catch (final Exception e) {
+            nextFuture.completeExceptionally(e);
+          }
+        },
+        executor);
+    return nextFuture;
+  }
+
+  @Override
+  public <U> ActorFuture<U> thenApply(final Function<V, U> next, final Executor executor) {
+    final ActorFuture<U> nextFuture = new CompletableActorFuture<>();
+    onComplete(
+        (value, error) -> {
+          if (error != null) {
+            nextFuture.completeExceptionally(error);
+            return;
+          }
+
+          try {
+            nextFuture.complete(next.apply(value));
+          } catch (final Exception e) {
+            nextFuture.completeExceptionally(new CompletionException(e));
+          }
+        },
+        executor);
+    return nextFuture;
+  }
+
+  @Override
+  public void onComplete(final BiConsumer<V, Throwable> consumer) {
+    if (ActorThread.isCalledFromActorThread()) {
+      final ActorControl actorControl = ActorControl.current();
+      actorControl.runOnCompletion(this, consumer);
+    } else {
+      // We don't reject this because, this is useful for tests. But the warning is a reminder not
+      // to use this in production code.
+      Loggers.ACTOR_LOGGER.warn(
+          """
+                            [PotentiallyBlocking] No executor provided for ActorFuture#onComplete callback.\
+                             This could block the actor that completes the future.\
+                             Use onComplete(consumer, executor) instead.""");
+      onComplete(consumer, Runnable::run);
+    }
+  }
+
+  @Override
+  public void onComplete(final BiConsumer<V, Throwable> consumer, final Executor executor) {
+    // There is a possible race condition that the future is completed before adding the consumer to
+    // blockedCallBacks. Then the consumer will never get executed. To ensure that the
+    // consumer is executed we check if the future is done, and trigger the consumer. However, if
+    // future is completed after adding the consumer to the blockedCallBacks, but before the next
+    // isDone is called the consumer might be triggered twice. To ensure exactly once execution, we
+    // use the AtomicBoolean executedOnce. Since this method is not usually called from any actor,
+    // this extra overhead would be acceptable.
+
+    final AtomicBoolean executedOnce = new AtomicBoolean(false);
+    final BiConsumer<V, Throwable> checkedConsumer =
+        (res, error) ->
+            executor.execute(
+                () -> {
+                  if (executedOnce.compareAndSet(false, true)) {
+                    consumer.accept(res, error);
+                  }
+                });
+
+    if (!isDone()) {
+      // If future is already completed, blockedCallbacks are not notified again. So there is no
+      // need to add the consumer.
+      blockedCallbacks.add(checkedConsumer);
+    }
+
+    // Do not replace the following if(isDone()) with an else. The future might be completed after
+    // the previous isDone() check.
+    if (isDone()) {
+      // Due to happens-before order guarantee between write to volatile field state and
+      // non-volatile fields value and failureCause, we can read value and failureCause without
+      // locks.
+      checkedConsumer.accept(value, failureCause);
+    }
+  }
+
+  @Override
+  public <U> ActorFuture<U> thenApply(final Function<V, U> next) {
+    if (ActorThread.isCalledFromActorThread()) {
+      final ActorControl actorControl = ActorControl.current();
+      return thenApply(next, actorControl);
+    } else {
+      // We don't reject this because, this is useful for tests. But the warning is a reminder not
+      // to use this in production code.
+      Loggers.ACTOR_LOGGER.warn(
+          """
+                            [PotentiallyBlocking] No executor provided for ActorFuture#thenApply method.\
+                             This could block the actor that completes the future.\
+                             Use thenApply(consumer, executor) instead.""");
+      return thenApply(next, Runnable::run);
+    }
+  }
+
+  @Override
   public boolean cancel(final boolean mayInterruptIfRunning) {
     throw new UnsupportedOperationException();
   }
@@ -132,7 +271,7 @@ public class CompletableActorFuture<V> implements ActorFuture<V> {
 
   @Override
   public void block(final ActorTask onCompletion) {
-    blockedTasks.add(onCompletion);
+    blockedCallbacks.add((resIgnore, errorIgnore) -> onCompletion.tryWakeup());
   }
 
   @Override
@@ -182,7 +321,7 @@ public class CompletableActorFuture<V> implements ActorFuture<V> {
     if (STATE_VAR_HANDLE.compareAndSet(this, AWAITING_RESULT, COMPLETING)) {
       this.value = value;
       state = COMPLETED;
-      notifyBlockedTasks();
+      notifyBlockedCallBacks();
     } else {
       final String err =
           "Cannot complete future, the future is already completed "
@@ -191,6 +330,15 @@ public class CompletableActorFuture<V> implements ActorFuture<V> {
                   : " with value " + value);
 
       throw new IllegalStateException(err);
+    }
+  }
+
+  private void notifyBlockedCallBacks() {
+    while (!blockedCallbacks.isEmpty()) {
+      final var callBack = blockedCallbacks.poll();
+      if (callBack != null) {
+        callBack.accept(value, failureCause);
+      }
     }
   }
 
@@ -203,7 +351,7 @@ public class CompletableActorFuture<V> implements ActorFuture<V> {
       this.failure = failure;
       failureCause = throwable;
       state = COMPLETED_EXCEPTIONALLY;
-      notifyBlockedTasks();
+      notifyAllBlocked();
     } else {
       final String err =
           "Cannot complete future, the future is already completed "
@@ -220,12 +368,16 @@ public class CompletableActorFuture<V> implements ActorFuture<V> {
     completeExceptionally(throwable.getMessage(), throwable);
   }
 
-  private void notifyBlockedTasks() {
-    notifyAllInQueue(blockedTasks);
+  private void notifyAllBlocked() {
+    notifyBlockedCallBacks();
 
     try {
       completionLock.lock();
-      isDoneCondition.signalAll();
+      if (isDoneCondition != null) {
+        // condition is null if the future was created with `completed` or `completedExceptionally`,
+        // i.e. the future was never waiting for a result.
+        isDoneCondition.signalAll();
+      }
     } finally {
       completionLock.unlock();
     }
@@ -254,7 +406,7 @@ public class CompletableActorFuture<V> implements ActorFuture<V> {
       value = null;
       failure = null;
       failureCause = null;
-      notifyBlockedTasks();
+      notifyAllBlocked();
     }
 
     return prevState != CLOSED;

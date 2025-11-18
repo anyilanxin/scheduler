@@ -27,6 +27,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
+/** Actor */
 public abstract class Actor implements AutoCloseable, AsyncClosable, ConcurrencyControl {
   protected final ActorControl actor = new ActorControl(this);
   private Map<String, String> context;

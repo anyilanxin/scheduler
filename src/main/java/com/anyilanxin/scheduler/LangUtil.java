@@ -31,6 +31,6 @@ public class LangUtil {
   }
 
   public static <T> CompletableFuture<Void> allOf(final List<T> futures) {
-    return CompletableFuture.allOf(futures.toArray(new CompletableFuture[futures.size()]));
+    return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]));
   }
 }

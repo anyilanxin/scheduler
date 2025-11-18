@@ -111,4 +111,14 @@ public class TimerSubscription implements ActorSubscription, ScheduledTimer, Run
   public void run() {
     thread.removeTimer(this);
   }
+
+  @Override
+  public boolean equals(final Object o) {
+    return super.equals(o);
+  }
+
+  @Override
+  public int hashCode() {
+    return super.hashCode();
+  }
 }

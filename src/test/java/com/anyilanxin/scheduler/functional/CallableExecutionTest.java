@@ -61,20 +61,20 @@ public class CallableExecutionTest {
     barrier.await(); // signal actor to continue
 
     // then
-    TestUtil.waitUntil(() -> future.isDone());
+      TestUtil.waitUntil(future::isDone);
     assertThat(future).isDone();
-    assertThatThrownBy(() -> future.get())
+      assertThatThrownBy(future::get)
         .isInstanceOf(ExecutionException.class)
         .hasMessage("Actor is closed");
   }
 
-  class CloseableActor extends Actor {
+    static class CloseableActor extends Actor {
     ActorFuture<Void> doCall() {
       return actor.call(() -> {});
     }
 
     @Override
-    void close() {
+    public void close() {
       actor.close();
     }
   }

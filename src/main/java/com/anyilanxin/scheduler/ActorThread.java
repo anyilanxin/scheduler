@@ -162,6 +162,11 @@ public class ActorThread extends Thread implements Consumer<Runnable> {
     }
   }
 
+  public static boolean isCalledFromActorThread() {
+    final ActorThread thread = ActorThread.current();
+    return thread != null;
+  }
+
   public void hintWorkAvailable() {
     idleStrategy.hintWorkAvailable();
   }
@@ -274,7 +279,8 @@ public class ActorThread extends Thread implements Consumer<Runnable> {
     NEW,
     RUNNING,
     TERMINATING,
-    TERMINATED // runner is not reusable
+    // runner is not reusable
+    TERMINATED
   }
 
   public ActorJob getCurrentJob() {

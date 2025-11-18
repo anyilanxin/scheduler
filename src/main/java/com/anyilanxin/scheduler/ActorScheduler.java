@@ -300,6 +300,7 @@ public class ActorScheduler {
     NEW,
     RUNNING,
     TERMINATING,
-    TERMINATED // scheduler is not reusable
+    // scheduler is not reusable
+    TERMINATED
   }
 }

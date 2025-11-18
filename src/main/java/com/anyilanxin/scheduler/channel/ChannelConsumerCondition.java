@@ -53,9 +53,8 @@ public class ChannelConsumerCondition
 
   @Override
   public boolean poll() {
-    final long polledCount = triggerCount;
     final boolean hasAvailable = channel.hasAvailable();
-    return polledCount > processedTiggersCount || hasAvailable;
+    return triggerCount > processedTiggersCount || hasAvailable;
   }
 
   @Override

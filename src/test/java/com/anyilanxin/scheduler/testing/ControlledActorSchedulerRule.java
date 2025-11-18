@@ -16,23 +16,19 @@
  */
 package com.anyilanxin.scheduler.testing;
 
-import com.anyilanxin.scheduler.Actor;
-import com.anyilanxin.scheduler.ActorScheduler;
+import com.anyilanxin.scheduler.*;
 import com.anyilanxin.scheduler.ActorScheduler.ActorSchedulerBuilder;
 import com.anyilanxin.scheduler.ActorScheduler.ActorThreadFactory;
-import com.anyilanxin.scheduler.ActorThread;
-import com.anyilanxin.scheduler.ActorThreadGroup;
-import com.anyilanxin.scheduler.ActorTimerQueue;
-import com.anyilanxin.scheduler.TaskScheduler;
 import com.anyilanxin.scheduler.clock.ActorClock;
 import com.anyilanxin.scheduler.clock.ControlledActorClock;
 import com.anyilanxin.scheduler.future.ActorFuture;
 import com.anyilanxin.scheduler.future.CompletableActorFuture;
+import org.junit.Assert;
+import org.junit.rules.ExternalResource;
+
 import java.time.Duration;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ThreadPoolExecutor;
-import org.junit.Assert;
-import org.junit.rules.ExternalResource;
 
 public class ControlledActorSchedulerRule extends ExternalResource {
   private final ActorScheduler actorScheduler;
@@ -94,7 +90,7 @@ public class ControlledActorSchedulerRule extends ExternalResource {
 
     public <T> ActorFuture<T> call(final Callable<T> callable) {
     final ActorFuture<T> future = new CompletableActorFuture<>();
-    submitActor(new CallingActor(future, callable));
+        submitActor(new CallingActor<>(future, callable));
     return future;
   }
 
