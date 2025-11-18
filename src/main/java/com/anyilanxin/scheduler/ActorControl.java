@@ -261,7 +261,7 @@ public class ActorControl {
     task.submit(job);
 
     if (currentTask == task) {
-      handleYield();
+      yieldThread();
     }
   }
 
@@ -435,9 +435,9 @@ public class ActorControl {
   }
 
   /** can be called by the actor to yield the thread */
-  public void handleYield() {
-    final ActorJob job = ensureCalledFromWithinActor("handleYield()");
-    job.getTask().handleYield();
+  public void yieldThread() {
+    final ActorJob job = ensureCalledFromWithinActor("yieldThread()");
+    job.getTask().yieldThread();
   }
 
   public ActorFuture<Void> close() {

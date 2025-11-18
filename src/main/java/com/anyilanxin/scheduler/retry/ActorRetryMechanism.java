@@ -49,7 +49,7 @@ public class ActorRetryMechanism {
       currentFuture.complete(false);
       actor.done();
     } else {
-      actor.yield();
+      actor.yieldThread();
     }
   }
 }

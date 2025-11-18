@@ -16,14 +16,15 @@
  */
 package com.anyilanxin.scheduler.functional;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
-import io.zeebe.util.collection.Tuple;
 import com.anyilanxin.scheduler.Actor;
+import com.anyilanxin.scheduler.Tuple;
 import com.anyilanxin.scheduler.future.ActorFuture;
 import com.anyilanxin.scheduler.future.CompletableActorFuture;
 import com.anyilanxin.scheduler.testing.ControlledActorSchedulerRule;
+import org.assertj.core.api.AbstractThrowableAssert;
+import org.junit.Rule;
+import org.junit.Test;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -34,9 +35,9 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
-import org.assertj.core.api.AbstractThrowableAssert;
-import org.junit.Rule;
-import org.junit.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class ActorFutureTest {
   @Rule public ControlledActorSchedulerRule schedulerRule = new ControlledActorSchedulerRule();
@@ -456,7 +457,7 @@ public class ActorFutureTest {
           });
     }
 
-    public ActorFuture<Integer> call(int returnValue) {
+      public ActorFuture<Integer> call(final int returnValue) {
       return actor.call(() -> returnValue);
     }
   }
@@ -473,7 +474,7 @@ public class ActorFutureTest {
           });
     }
 
-    public ActorFuture<Integer> call(int returnValue) {
+      public ActorFuture<Integer> call(final int returnValue) {
       return actor.call(() -> returnValue);
     }
   }
@@ -703,7 +704,7 @@ public class ActorFutureTest {
 
   class TestActor extends Actor {
 
-    public <T> void awaitFuture(ActorFuture<T> f, BiConsumer<T, Throwable> onCompletion) {
+      public <T> void awaitFuture(final ActorFuture<T> f, final BiConsumer<T, Throwable> onCompletion) {
       actor.call(() -> actor.runOnCompletionBlockingCurrentPhase(f, onCompletion));
     }
 

@@ -514,7 +514,7 @@ public class ActorTask {
     return actor.getName() + " " + schedulingState + " phase: " + lifecyclePhase;
   }
 
-  public void handleYield() {
+  public void yieldThread() {
     shouldYield = true;
   }
 

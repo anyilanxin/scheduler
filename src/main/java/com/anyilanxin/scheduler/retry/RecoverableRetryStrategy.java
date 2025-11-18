@@ -58,7 +58,7 @@ public class RecoverableRetryStrategy implements RetryStrategy {
       if (terminateCondition.getAsBoolean()) {
         actor.done();
       } else {
-        actor.yield();
+        actor.yieldThread();
       }
     } catch (final Exception exception) {
       currentFuture.completeExceptionally(exception);

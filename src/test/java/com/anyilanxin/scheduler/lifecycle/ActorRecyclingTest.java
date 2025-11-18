@@ -16,17 +16,17 @@
  */
 package com.anyilanxin.scheduler.lifecycle;
 
-import static com.anyilanxin.scheduler.lifecycle.LifecycleRecordingActor.FULL_LIFECYCLE;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verifyZeroInteractions;
-
 import com.anyilanxin.scheduler.future.ActorFuture;
 import com.anyilanxin.scheduler.future.CompletableActorFuture;
 import com.anyilanxin.scheduler.testing.ControlledActorSchedulerRule;
 import org.junit.Ignore;
 import org.junit.Rule;
 import org.junit.Test;
+
+import static com.anyilanxin.scheduler.lifecycle.LifecycleRecordingActor.FULL_LIFECYCLE;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 public class ActorRecyclingTest {
   @Rule
@@ -88,7 +88,7 @@ public class ActorRecyclingTest {
     schedulerRule.workUntilDone();
 
     // then
-    verifyZeroInteractions(action);
+      verifyNoInteractions(action);
   }
 
   @Test

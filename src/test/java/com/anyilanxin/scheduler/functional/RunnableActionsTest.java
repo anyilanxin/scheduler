@@ -16,26 +16,23 @@
  */
 package com.anyilanxin.scheduler.functional;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doCallRealMethod;
-import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.spy;
-import static org.mockito.Mockito.times;
-
 import com.anyilanxin.scheduler.Actor;
 import com.anyilanxin.scheduler.ActorControl;
 import com.anyilanxin.scheduler.ActorThread;
 import com.anyilanxin.scheduler.testing.ControlledActorSchedulerRule;
+import org.junit.Rule;
+import org.junit.Test;
+import org.mockito.InOrder;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
-import org.junit.Rule;
-import org.junit.Test;
-import org.mockito.InOrder;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
 
 public class RunnableActionsTest {
   @Rule public ControlledActorSchedulerRule scheduler = new ControlledActorSchedulerRule();
@@ -47,7 +44,7 @@ public class RunnableActionsTest {
         new Runner() {
           @Override
           protected void onActorStarted() {
-            this.doRun();
+              doRun();
           }
         };
 
@@ -130,7 +127,7 @@ public class RunnableActionsTest {
           if (actor.runs == 5) {
             ctr.done();
           } else {
-            ctr.yield();
+              ctr.yieldThread();
           }
         };
 
@@ -152,13 +149,13 @@ public class RunnableActionsTest {
         spy(
             new Consumer<ActorControl>() {
               @Override
-              public void accept(ActorControl ctr) {
+              public void accept(final ActorControl ctr) {
                 ctr.run(otherAction); // does not interrupt this action
 
                 if (actor.runs == 5) {
                   ctr.done();
                 } else {
-                  ctr.yield();
+                    ctr.yieldThread();
                 }
               }
             });
@@ -190,7 +187,7 @@ public class RunnableActionsTest {
           protected void onActorStarted() {
             try {
               submitter.submit(invocations::incrementAndGet);
-            } catch (Exception e) {
+            } catch (final Exception e) {
               exceptionOnSubmit.set(true);
             }
           }
@@ -208,8 +205,8 @@ public class RunnableActionsTest {
   }
 
   class Submitter extends Actor {
-    public void submit(Runnable r) {
-      this.actor.submit(r);
+      public void submit(final Runnable r) {
+          actor.submit(r);
     }
   }
 
@@ -221,7 +218,7 @@ public class RunnableActionsTest {
       this(null);
     }
 
-    Runner(Runnable onExecution) {
+      Runner(final Runnable onExecution) {
       this.onExecution = onExecution;
     }
 
@@ -235,7 +232,7 @@ public class RunnableActionsTest {
           });
     }
 
-    public void doRunUntilDone(Consumer<ActorControl> runnable) {
+      public void doRunUntilDone(final Consumer<ActorControl> runnable) {
       actor.run(
           () -> {
             actor.runUntilDone(

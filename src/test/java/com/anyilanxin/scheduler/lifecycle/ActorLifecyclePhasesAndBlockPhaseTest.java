@@ -16,21 +16,20 @@
  */
 package com.anyilanxin.scheduler.lifecycle;
 
-import static com.anyilanxin.scheduler.ActorTask.ActorLifecyclePhase.CLOSE_REQUESTED;
-import static com.anyilanxin.scheduler.ActorTask.ActorLifecyclePhase.STARTED;
-import static com.anyilanxin.scheduler.ActorTask.ActorLifecyclePhase.STARTING;
+import com.anyilanxin.scheduler.future.ActorFuture;
+import com.anyilanxin.scheduler.future.CompletableActorFuture;
+import com.anyilanxin.scheduler.testing.ControlledActorSchedulerRule;
+import org.junit.Rule;
+import org.junit.Test;
+
+import java.util.function.BiConsumer;
+
+import static com.anyilanxin.scheduler.ActorTask.ActorLifecyclePhase.*;
 import static com.anyilanxin.scheduler.lifecycle.LifecycleRecordingActor.FULL_LIFECYCLE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.util.Lists.newArrayList;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verifyZeroInteractions;
-
-import com.anyilanxin.scheduler.future.ActorFuture;
-import com.anyilanxin.scheduler.future.CompletableActorFuture;
-import com.anyilanxin.scheduler.testing.ControlledActorSchedulerRule;
-import java.util.function.BiConsumer;
-import org.junit.Rule;
-import org.junit.Test;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 @SuppressWarnings("unchecked")
 public class ActorLifecyclePhasesAndBlockPhaseTest {
@@ -107,7 +106,7 @@ public class ActorLifecyclePhasesAndBlockPhaseTest {
     // then
     assertThat(closeFuture).isNotDone();
     assertThat(actor.phases).isEqualTo(newArrayList(STARTING, STARTED, CLOSE_REQUESTED));
-    verifyZeroInteractions(callback);
+      verifyNoInteractions(callback);
   }
 
   @Test

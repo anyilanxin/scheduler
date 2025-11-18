@@ -16,17 +16,14 @@
  */
 package com.anyilanxin.scheduler.lifecycle;
 
-import static org.mockito.Mockito.eq;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyZeroInteractions;
-
 import com.anyilanxin.scheduler.future.CompletableActorFuture;
 import com.anyilanxin.scheduler.testing.ControlledActorSchedulerRule;
-import java.util.function.Consumer;
 import org.junit.Rule;
 import org.junit.Test;
+
+import java.util.function.Consumer;
+
+import static org.mockito.Mockito.*;
 
 @SuppressWarnings("unchecked")
 public class ActorLifecyclePhasesAndRunBlockingTest {
@@ -55,7 +52,7 @@ public class ActorLifecyclePhasesAndRunBlockingTest {
 
     // then
     verify(runnable, times(1)).run();
-    verifyZeroInteractions(completionConsumer);
+      verifyNoInteractions(completionConsumer);
   }
 
   @Test
@@ -79,7 +76,7 @@ public class ActorLifecyclePhasesAndRunBlockingTest {
     // when
     schedulerRule.workUntilDone();
     verify(runnable, times(1)).run();
-    verifyZeroInteractions(completionConsumer);
+      verifyNoInteractions(completionConsumer);
 
     // when then
     future.complete(null);
@@ -136,7 +133,7 @@ public class ActorLifecyclePhasesAndRunBlockingTest {
 
     // then
     verify(runnable, times(1)).run();
-    verifyZeroInteractions(completionConsumer);
+      verifyNoInteractions(completionConsumer);
   }
 
   @Test
@@ -163,7 +160,7 @@ public class ActorLifecyclePhasesAndRunBlockingTest {
 
     // then
     verify(runnable, times(1)).run();
-    verifyZeroInteractions(completionConsumer);
+      verifyNoInteractions(completionConsumer);
   }
 
   @Test
@@ -190,6 +187,6 @@ public class ActorLifecyclePhasesAndRunBlockingTest {
 
     // then
     verify(runnable, times(1)).run();
-    verifyZeroInteractions(completionConsumer);
+      verifyNoInteractions(completionConsumer);
   }
 }

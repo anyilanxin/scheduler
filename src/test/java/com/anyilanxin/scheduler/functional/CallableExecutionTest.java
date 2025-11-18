@@ -16,18 +16,19 @@
  */
 package com.anyilanxin.scheduler.functional;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
-import io.zeebe.util.TestUtil;
 import com.anyilanxin.scheduler.Actor;
+import com.anyilanxin.scheduler.TestUtil;
 import com.anyilanxin.scheduler.future.ActorFuture;
 import com.anyilanxin.scheduler.testing.ActorSchedulerRule;
+import org.junit.Rule;
+import org.junit.Test;
+
 import java.util.concurrent.BrokenBarrierException;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutionException;
-import org.junit.Rule;
-import org.junit.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 public class CallableExecutionTest {
   @Rule public final ActorSchedulerRule schedulerRule = new ActorSchedulerRule(3);
@@ -44,7 +45,7 @@ public class CallableExecutionTest {
             try {
               barrier.await(); // signal arrival at barrier
               barrier.await(); // wait for continuation
-            } catch (InterruptedException | BrokenBarrierException e) {
+            } catch (final InterruptedException | BrokenBarrierException e) {
               throw new RuntimeException(e);
             }
           }

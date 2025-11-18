@@ -16,21 +16,19 @@
  */
 package com.anyilanxin.scheduler.lifecycle;
 
-import static com.anyilanxin.scheduler.ActorTask.ActorLifecyclePhase.CLOSE_REQUESTED;
-import static com.anyilanxin.scheduler.ActorTask.ActorLifecyclePhase.CLOSING;
-import static com.anyilanxin.scheduler.ActorTask.ActorLifecyclePhase.STARTED;
-import static com.anyilanxin.scheduler.ActorTask.ActorLifecyclePhase.STARTING;
+import com.anyilanxin.scheduler.TestUtil;
+import com.anyilanxin.scheduler.future.ActorFuture;
+import com.anyilanxin.scheduler.testing.ControlledActorSchedulerRule;
+import org.junit.Rule;
+import org.junit.Test;
+
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static com.anyilanxin.scheduler.ActorTask.ActorLifecyclePhase.*;
 import static com.anyilanxin.scheduler.lifecycle.LifecycleRecordingActor.FULL_LIFECYCLE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.util.Lists.newArrayList;
-
-import io.zeebe.util.TestUtil;
-import com.anyilanxin.scheduler.future.ActorFuture;
-import com.anyilanxin.scheduler.testing.ControlledActorSchedulerRule;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
-import org.junit.Rule;
-import org.junit.Test;
 
 public class ActorLifecyclePhasesTest {
   @Rule
@@ -145,7 +143,7 @@ public class ActorLifecyclePhasesTest {
           public void onActorStarting() {
             super.onActorStarting();
 
-            this.actor.run(
+              actor.run(
                 () -> {
                   throw failure;
                 });
@@ -173,7 +171,7 @@ public class ActorLifecyclePhasesTest {
           public void onActorClosing() {
             super.onActorClosing();
 
-            this.actor.run(
+              actor.run(
                 () -> {
                   throw failure;
                 });
@@ -205,7 +203,7 @@ public class ActorLifecyclePhasesTest {
           public void onActorStarting() {
             super.onActorStarting();
 
-            this.actor.run(() -> isInvoked.set(true));
+              actor.run(() -> isInvoked.set(true));
 
             throw failure;
           }
@@ -231,7 +229,7 @@ public class ActorLifecyclePhasesTest {
           public void onActorStarted() {
             super.onActorStarted();
 
-            this.actor.runUntilDone(
+              actor.runUntilDone(
                 () -> {
                   final int inv = invocations.getAndIncrement();
 
