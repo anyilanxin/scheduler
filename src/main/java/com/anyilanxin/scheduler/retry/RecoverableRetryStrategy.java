@@ -22,7 +22,7 @@ import com.anyilanxin.scheduler.future.ActorFuture;
 import com.anyilanxin.scheduler.future.CompletableActorFuture;
 import java.util.function.BooleanSupplier;
 
-public class RecoverableRetryStrategy implements RetryStrategy {
+public final class RecoverableRetryStrategy implements RetryStrategy {
 
   private final ActorControl actor;
   private final ActorRetryMechanism retryMechanism;
@@ -31,7 +31,7 @@ public class RecoverableRetryStrategy implements RetryStrategy {
 
   public RecoverableRetryStrategy(final ActorControl actor) {
     this.actor = actor;
-    retryMechanism = new ActorRetryMechanism(actor);
+    retryMechanism = new ActorRetryMechanism();
   }
 
   @Override
@@ -46,23 +46,25 @@ public class RecoverableRetryStrategy implements RetryStrategy {
     terminateCondition = condition;
     retryMechanism.wrap(callable, terminateCondition, currentFuture);
 
-    actor.runUntilDone(this::run);
+    actor.run(this::run);
 
     return currentFuture;
   }
 
   private void run() {
     try {
-      retryMechanism.run();
+      final var control = retryMechanism.run();
+      if (control == ActorRetryMechanism.Control.RETRY) {
+        actor.run(this::run);
+        actor.yieldThread();
+      }
     } catch (final RecoverableException ex) {
-      if (terminateCondition.getAsBoolean()) {
-        actor.done();
-      } else {
+      if (!terminateCondition.getAsBoolean()) {
+        actor.run(this::run);
         actor.yieldThread();
       }
     } catch (final Exception exception) {
       currentFuture.completeExceptionally(exception);
-      actor.done();
     }
   }
 }

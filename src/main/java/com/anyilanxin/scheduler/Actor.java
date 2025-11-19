@@ -16,8 +16,6 @@
  */
 package com.anyilanxin.scheduler;
 
-import static com.anyilanxin.scheduler.Loggers.ACTOR_LOGGER;
-
 import com.anyilanxin.scheduler.future.ActorFuture;
 import java.time.Duration;
 import java.util.Collection;
@@ -29,12 +27,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
-/** Actor */
 public abstract class Actor implements AutoCloseable, AsyncClosable, ConcurrencyControl {
   protected final ActorControl actor = new ActorControl(this);
   private Map<String, String> context;
   public static final String ACTOR_PROP_NAME = "actor-name";
-  private static final int MAX_CLOSE_TIMEOUT = 400;
+  private static final int MAX_CLOSE_TIMEOUT = 300;
 
   protected void onActorStarting() {
     // setup
@@ -57,7 +54,7 @@ public abstract class Actor implements AutoCloseable, AsyncClosable, Concurrency
   }
 
   /**
-   * actor context
+   * Should be overwritten by sub classes to add more context where the actor is run.
    *
    * @return the context of the actor
    */
@@ -73,9 +70,8 @@ public abstract class Actor implements AutoCloseable, AsyncClosable, Concurrency
   }
 
   /**
-   * actor context
-   *
-   * @return {@link Map }<{@link String }, {@link String }>
+   * @return a map which defines the context where the actor is run. Per default it just returns a
+   *     map with the actor name. Ideally sub classes add more context, like the partition id etc.
    */
   public Map<String, String> getContext() {
     if (context == null) {
@@ -84,12 +80,26 @@ public abstract class Actor implements AutoCloseable, AsyncClosable, Concurrency
     return context;
   }
 
-  public static String buildActorName(final String nameFirst, final String nameSecond) {
-    return "%s-%s".formatted(nameFirst, nameSecond);
+  public static String buildActorName(final String firstName, final int secondName) {
+    return "%s-%d".formatted(firstName, secondName);
   }
 
-  public static String buildActorName(final String nameFirst, final Integer nameSecond) {
-    return "%s-%d".formatted(nameFirst, nameSecond);
+  public static String buildActorName(final String firstName, final String secondName) {
+    return "%s-%s".formatted(firstName, secondName);
+  }
+
+  @Override
+  public void close() {
+    closeAsync().join(MAX_CLOSE_TIMEOUT, TimeUnit.SECONDS);
+  }
+
+  @Override
+  public ActorFuture<Void> closeAsync() {
+    return actor.close();
+  }
+
+  public void onActorFailed() {
+    // clean ups
   }
 
   @Override
@@ -102,25 +112,6 @@ public abstract class Actor implements AutoCloseable, AsyncClosable, Concurrency
   public <T> void runOnCompletion(
       final Collection<ActorFuture<T>> actorFutures, final Consumer<Throwable> callback) {
     actor.runOnCompletion(actorFutures, callback);
-  }
-
-  /** Invoked when a task throws and the actor phase is not 'STARTING' and 'CLOSING'. */
-  protected void handleFailure(final Throwable failure) {
-    ACTOR_LOGGER.error(
-        "Uncaught exception in '{}' in phase '{}'. Continuing with next job.",
-        getName(),
-        actor.getLifecyclePhase(),
-        failure);
-  }
-
-  @Override
-  public void close() {
-    closeAsync().join(MAX_CLOSE_TIMEOUT, TimeUnit.SECONDS);
-  }
-
-  @Override
-  public ActorFuture<Void> closeAsync() {
-    return actor.close();
   }
 
   @Override
@@ -140,6 +131,19 @@ public abstract class Actor implements AutoCloseable, AsyncClosable, Concurrency
 
   public static ActorBuilder newActor() {
     return new ActorBuilder();
+  }
+
+  public boolean isActorClosed() {
+    return actor.isClosed();
+  }
+
+  /** Invoked when a task throws and the actor phase is not 'STARTING' and 'CLOSING'. */
+  protected void handleFailure(final Throwable failure) {
+    com.anyilanxin.scheduler.Loggers.ACTOR_LOGGER.error(
+        "Uncaught exception in '{}' in phase '{}'. Continuing with next job.",
+        getName(),
+        actor.getLifecyclePhase(),
+        failure);
   }
 
   public static Actor wrap(final Consumer<ActorControl> r) {

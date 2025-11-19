@@ -26,6 +26,14 @@ public class SchedulingHints {
     return hints;
   }
 
+  public static int cpuBound() {
+    int hints = 1;
+
+    hints = setCpuBound(hints);
+
+    return hints;
+  }
+
   public static int cpuBound(final ActorPriority priority) {
     int hints = 0;
 

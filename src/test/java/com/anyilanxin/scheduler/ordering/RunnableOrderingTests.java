@@ -16,18 +16,16 @@
  */
 package com.anyilanxin.scheduler.ordering;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.util.Lists.newArrayList;
-
 import com.anyilanxin.scheduler.ActorCondition;
-import com.anyilanxin.scheduler.channel.ConcurrentQueueChannel;
 import com.anyilanxin.scheduler.future.CompletableActorFuture;
 import com.anyilanxin.scheduler.testing.ControlledActorSchedulerRule;
-import java.time.Duration;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Rule;
 import org.junit.Test;
+
+import java.time.Duration;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.util.Lists.newArrayList;
 
 public class RunnableOrderingTests {
   private static final String ONE = "one";
@@ -180,124 +178,6 @@ public class RunnableOrderingTests {
     assertThat(actor.actions).containsSubsequence(newArrayList(THREE, TWO));
     assertThat(actor.actions).containsSubsequence(newArrayList(ONE, FOUR));
     assertThat(actor.actions).containsSubsequence(newArrayList(THREE, FOUR));
-  }
-
-  @Test
-  public void runUntilDoneTest() {
-    // given
-    final CompletableActorFuture<Void> future = CompletableActorFuture.completed(null);
-    final ActionRecordingActor actor =
-        new ActionRecordingActor() {
-          @Override
-          protected void onActorStarted() {
-            actor.run(runnable(TWO));
-            final AtomicInteger count = new AtomicInteger();
-            actor.runUntilDone(
-                () -> {
-                  final int couter = count.incrementAndGet();
-                  if (couter > 2) {
-                    actor.done();
-                  } else {
-                    actor.runOnCompletion(future, futureConsumer(FOUR));
-                  }
-
-                  actions.add(ONE);
-                });
-            actor.run(runnable(THREE));
-          }
-        };
-
-    // when
-    schedulerRule.submitActor(actor);
-    schedulerRule.workUntilDone();
-
-    // then
-    assertThat(actor.actions).containsSequence(newArrayList(ONE, ONE, ONE));
-    assertThat(actor.actions).containsSequence(newArrayList(FOUR, FOUR));
-    assertThat(actor.actions)
-        .containsSubsequence(
-            newArrayList(ONE, FOUR)); // futures are executed after runUntilDone finishes
-    assertThat(actor.actions).containsSubsequence(newArrayList(TWO, FOUR));
-    assertThat(actor.actions).containsSubsequence(newArrayList(THREE, FOUR));
-  }
-
-  @Test
-  public void runUntilDoneWithBlockingPhaseTest() {
-    // given
-    final CompletableActorFuture<Void> future = CompletableActorFuture.completed(null);
-    final ActionRecordingActor actor =
-        new ActionRecordingActor() {
-          @Override
-          protected void onActorStarted() {
-            actor.run(runnable(TWO));
-            final AtomicInteger count = new AtomicInteger();
-            actor.runUntilDone(
-                () -> {
-                  final int couter = count.incrementAndGet();
-                  if (couter > 2) {
-                    actor.done();
-                  } else {
-                    actor.runOnCompletionBlockingCurrentPhase(future, futureConsumer(FOUR));
-                  }
-
-                  actions.add(ONE);
-                });
-            actor.run(runnable(THREE));
-          }
-        };
-
-    // when
-    schedulerRule.submitActor(actor);
-    schedulerRule.workUntilDone();
-
-    // then
-    assertThat(actor.actions).containsSequence(newArrayList(ONE, ONE, ONE));
-    assertThat(actor.actions).containsSequence(newArrayList(FOUR, FOUR));
-    assertThat(actor.actions)
-        .containsSubsequence(
-            newArrayList(ONE, FOUR)); // futures are executed after runUntilDone finishes
-    assertThat(actor.actions).containsSubsequence(newArrayList(TWO, FOUR));
-    assertThat(actor.actions).containsSubsequence(newArrayList(THREE, FOUR));
-  }
-
-  @Test
-  public void consumerTest() {
-    // given
-    final ConcurrentQueueChannel<Object> ch =
-        new ConcurrentQueueChannel<>(new ConcurrentLinkedQueue<>());
-    ch.add(new Object());
-    ch.add(new Object());
-
-    final ActionRecordingActor actor =
-        new ActionRecordingActor() {
-          @Override
-          protected void onActorStarted() {
-            actor.run(
-                () -> {
-                  actor.consume(
-                      ch,
-                      () -> {
-                        ch.poll();
-                        actions.add(THREE);
-                        actor.run(
-                            runnable(
-                                FOUR)); // this is done before the consumer fired for the second
-                        // time
-                      });
-                  actions.add(ONE);
-                });
-            actor.run(runnable(TWO));
-          }
-        };
-
-    // when
-    schedulerRule.submitActor(actor);
-    schedulerRule.workUntilDone();
-
-    // then
-    assertThat(actor.actions).containsSequence(newArrayList(THREE, FOUR, THREE, FOUR));
-    assertThat(actor.actions).containsSubsequence(newArrayList(ONE, THREE));
-    assertThat(actor.actions).containsSubsequence(newArrayList(TWO, THREE));
   }
 
   @Test

@@ -19,6 +19,7 @@ package com.anyilanxin.scheduler;
 import com.anyilanxin.scheduler.ActorScheduler.ActorSchedulerBuilder;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
+import org.slf4j.Logger;
 
 /**
  * A thread group is a group of threads which process the same kind of tasks (ie. blocking I/O vs.
@@ -26,9 +27,9 @@ import java.util.concurrent.ThreadLocalRandom;
  */
 public abstract class ActorThreadGroup {
   protected final String groupName;
-
+  private final String schedulerName;
   protected int numOfThreads;
-
+  private static final Logger LOG = Loggers.ACTOR_LOGGER;
   protected final ActorThread[] threads;
   protected final MultiLevelWorkstealingGroup tasks;
 
@@ -36,10 +37,11 @@ public abstract class ActorThreadGroup {
       final String groupName,
       final int numOfThreads,
       final int numOfQueuesPerThread,
-      final ActorSchedulerBuilder builder) {
+      final ActorSchedulerBuilder builder,
+      final String schedulerName) {
     this.groupName = groupName;
     this.numOfThreads = numOfThreads;
-
+    this.schedulerName = schedulerName;
     tasks = new MultiLevelWorkstealingGroup(numOfThreads, numOfQueuesPerThread);
 
     threads = new ActorThread[numOfThreads];
@@ -61,6 +63,10 @@ public abstract class ActorThreadGroup {
 
       threads[t] = thread;
     }
+  }
+
+  public String getSchedulerName() {
+    return schedulerName;
   }
 
   protected abstract TaskScheduler createTaskScheduler(
@@ -103,7 +109,7 @@ public abstract class ActorThreadGroup {
       try {
         terminationFutures[i] = threads[i].close();
       } catch (final IllegalStateException e) {
-        e.printStackTrace();
+        LOG.warn("close async error. ", e);
         terminationFutures[i] = CompletableFuture.completedFuture(null);
       }
     }

@@ -22,6 +22,7 @@ import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import org.slf4j.Logger;
 
 /**
  * Used to submit {@link ActorTask ActorTasks} and Blocking Actions to the scheduler's internal
@@ -32,6 +33,7 @@ public class ActorExecutor {
   private final ActorThreadGroup ioBoundThreads;
   private final ThreadPoolExecutor blockingTasksRunner;
   private Duration blockingTasksShutdownTime;
+  private static final Logger LOG = Loggers.ACTOR_LOGGER;
 
   public ActorExecutor(final ActorSchedulerBuilder builder) {
     ioBoundThreads = builder.getIoBoundActorThreads();
@@ -84,7 +86,7 @@ public class ActorExecutor {
       blockingTasksRunner.awaitTermination(
           blockingTasksShutdownTime.getSeconds(), TimeUnit.SECONDS);
     } catch (final InterruptedException e) {
-      e.printStackTrace();
+      LOG.error("actor executor start error.", e);
     }
 
     return resultFuture;

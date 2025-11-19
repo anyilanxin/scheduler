@@ -20,23 +20,18 @@ import java.util.function.Supplier;
 import java.util.stream.Collector;
 
 /**
- * A collector implementation that aggregates multiple {@link ActorFuture} instances into a single
- * {@link ActorFuture}.
+ * Aggregates a number of {@code ActorFuture} objects into a single one. The aggregated future is
+ * completed when all individual futures have completed. If all futures complete with a value, the
+ * aggregated future returns the ordered list of said values. If one or more complete exceptionally,
+ * the aggregated future will complete exceptionally. The exception will have the exceptions of the
+ * individual futures aas suppressed exceptions. If exceptions occur, this does not interrupt the
+ * individual futures.
  *
- * <p>This collector collects a stream of {@link ActorFuture} objects and combines them into one
- * {@link ActorFuture} that completes when all the individual futures have completed. If all futures
- * complete successfully, the resulting future contains a list of all values. If any future
- * completes exceptionally, the resulting future completes exceptionally with suppressed exceptions
- * containing all errors.
+ * <pre>
+ * var aggregated = of(future1, future2).stream().collect(new ActorFutureCollector<>(concurrencyControl));
+ * </pre>
  *
- * <p>Usage example:
- *
- * <pre>{@code
- * List<ActorFuture<String>> futures = ...;
- * ActorFuture<List<String>> aggregated = futures.stream().collect(new ActorFutureCollector<>(concurrencyControl));
- * }</pre>
- *
- * @param <V> the type of value contained in the futures being collected
+ * @param <V> type of the value of each future
  */
 public final class ActorFutureCollector<V>
     implements Collector<ActorFuture<V>, List<ActorFuture<V>>, ActorFuture<List<V>>> {
@@ -47,32 +42,16 @@ public final class ActorFutureCollector<V>
     this.concurrencyControl = Objects.requireNonNull(concurrencyControl);
   }
 
-  /**
-   * Returns a supplier that creates a new empty list to accumulate {@link ActorFuture} instances.
-   *
-   * @return a supplier function that returns a new ArrayList
-   */
   @Override
   public Supplier<List<ActorFuture<V>>> supplier() {
     return ArrayList::new;
   }
 
-  /**
-   * Returns a bi-consumer that adds {@link ActorFuture} instances to the accumulating list.
-   *
-   * @return a bi-consumer function that adds elements to the list
-   */
   @Override
   public BiConsumer<List<ActorFuture<V>>, ActorFuture<V>> accumulator() {
     return List::add;
   }
 
-  /**
-   * Returns a binary operator that combines two lists of {@link ActorFuture} instances.
-   *
-   * @return a binary operator that merges two lists by adding all elements from the second list to
-   *     the first
-   */
   @Override
   public BinaryOperator<List<ActorFuture<V>>> combiner() {
     return (listA, listB) -> {
@@ -81,35 +60,16 @@ public final class ActorFutureCollector<V>
     };
   }
 
-  /**
-   * Returns a function that converts the accumulated list of {@link ActorFuture} instances into a
-   * single {@link ActorFuture} that completes when all futures in the list complete.
-   *
-   * @return a function that creates a completion waiter and returns its aggregated future
-   */
   @Override
   public Function<List<ActorFuture<V>>, ActorFuture<List<V>>> finisher() {
     return futures -> new CompletionWaiter<>(concurrencyControl, futures).get();
   }
 
-  /**
-   * Returns the characteristics of this collector.
-   *
-   * @return an empty set indicating this collector has no special characteristics
-   */
   @Override
   public Set<Characteristics> characteristics() {
     return emptySet();
   }
 
-  /**
-   * Helper class that waits for all {@link ActorFuture} instances to complete and aggregates their
-   * results.
-   *
-   * <p>This class manages the completion callbacks for all futures and constructs the final
-   * aggregated result. It uses {@link Either} to track whether each future completed successfully
-   * or with an error.
-   */
   private static final class CompletionWaiter<V> implements Supplier<ActorFuture<List<V>>> {
     private final ConcurrencyControl concurrencyControl;
     private final List<ActorFuture<V>> pendingFutures;
@@ -124,13 +84,6 @@ public final class ActorFutureCollector<V>
       results = new Either[(pendingFutures.size())];
     }
 
-    /**
-     * Starts monitoring all pending futures and returns an aggregated future that completes when
-     * all futures complete.
-     *
-     * @return an {@link ActorFuture} that will contain the list of results or complete
-     *     exceptionally if any future fails
-     */
     @Override
     public ActorFuture<List<V>> get() {
       aggregated = concurrencyControl.createFuture();
@@ -151,15 +104,6 @@ public final class ActorFutureCollector<V>
       return aggregated;
     }
 
-    /**
-     * Handles the completion of an individual {@link ActorFuture}, storing its result and checking
-     * if all futures are complete.
-     *
-     * @param pendingFuture the future that completed
-     * @param currentIndex the index of the completed future in the original list
-     * @param result the result value if the future completed successfully
-     * @param error the error if the future completed exceptionally
-     */
     private void handleCompletion(
         final ActorFuture<V> pendingFuture,
         final int currentIndex,
@@ -174,13 +118,6 @@ public final class ActorFutureCollector<V>
       }
     }
 
-    /**
-     * Completes the aggregated future with either the list of results or an exception containing
-     * all errors.
-     *
-     * <p>If all futures completed successfully, completes with the list of values. Otherwise,
-     * completes exceptionally with suppressed exceptions for each error that occurred.
-     */
     private void completeAggregatedFuture() {
       final var aggregatedResult = stream(results).collect(Either.collector());
 

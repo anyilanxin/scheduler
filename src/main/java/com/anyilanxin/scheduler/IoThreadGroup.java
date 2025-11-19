@@ -22,10 +22,11 @@ public class IoThreadGroup extends ActorThreadGroup {
 
   public IoThreadGroup(final ActorSchedulerBuilder builder) {
     super(
-        String.format("%s-%s", builder.getSchedulerName(), "zb-fs-workers"),
+        String.format("%s-%s", builder.getSchedulerName(), "io-scheduler"),
         builder.getIoBoundActorThreadCount(),
         1,
-        builder);
+        builder,
+        builder.getSchedulerName());
   }
 
   @Override

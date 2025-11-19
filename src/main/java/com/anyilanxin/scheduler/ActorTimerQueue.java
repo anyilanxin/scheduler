@@ -20,19 +20,21 @@ import com.anyilanxin.scheduler.clock.ActorClock;
 import java.util.concurrent.TimeUnit;
 import org.agrona.DeadlineTimerWheel;
 import org.agrona.collections.Long2ObjectHashMap;
+import org.slf4j.Logger;
 
 public class ActorTimerQueue extends DeadlineTimerWheel {
   private static final int DEFAULT_TICKS_PER_WHEEL = 32;
   private final Long2ObjectHashMap<TimerSubscription> timerJobMap = new Long2ObjectHashMap<>();
-
+  private static final Logger LOG = Loggers.ACTOR_LOGGER;
   private final TimerHandler timerHandler =
       (timeUnit, now, timerId) -> {
         final TimerSubscription timer = timerJobMap.remove(timerId);
 
         if (timer != null) {
           timer.onTimerExpired(timeUnit, now);
+        } else {
+          LOG.warn("Timer with id {} expired but is not known in this timer queue.", timerId);
         }
-
         return true;
       };
 
@@ -53,11 +55,21 @@ public class ActorTimerQueue extends DeadlineTimerWheel {
   }
 
   public void schedule(final TimerSubscription timer, final ActorClock now) {
-    final long deadline =
-        now.getTimeMillis() + timeUnit().convert(timer.getDeadline(), timer.getTimeUnit());
+    final long deadline = timer.getDeadline(now);
 
     final long timerId = scheduleTimer(deadline);
     timer.setTimerId(timerId);
+    if (timerJobMap.containsKey(timerId)) {
+      LOG.error(
+          "Failed scheduling, timer with id {} already exists: {}",
+          timerId,
+          timerJobMap.get(timerId));
+      throw new IllegalStateException(
+          "Failed scheduling, timer with id "
+              + timerId
+              + " already exists: "
+              + timerJobMap.get(timerId));
+    }
 
     timerJobMap.put(timerId, timer);
   }

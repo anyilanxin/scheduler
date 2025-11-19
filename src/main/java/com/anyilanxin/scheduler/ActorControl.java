@@ -16,10 +16,9 @@
  */
 package com.anyilanxin.scheduler;
 
+import static com.anyilanxin.scheduler.ActorThread.ensureCalledFromActorThread;
+
 import com.anyilanxin.scheduler.ActorTask.ActorLifecyclePhase;
-import com.anyilanxin.scheduler.channel.ChannelConsumerCondition;
-import com.anyilanxin.scheduler.channel.ChannelSubscription;
-import com.anyilanxin.scheduler.channel.ConsumableChannel;
 import com.anyilanxin.scheduler.future.ActorFuture;
 import com.anyilanxin.scheduler.future.AllCompletedFutureConsumer;
 import com.anyilanxin.scheduler.future.FirstSuccessfullyCompletedFutureConsumer;
@@ -33,12 +32,10 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import org.slf4j.Logger;
 
-/** ActorControl provides methods to interact with the actor. */
 public class ActorControl implements ConcurrencyControl {
+  final ActorTask task;
   private final Actor actor;
   private static final Logger LOG = Loggers.ACTOR_LOGGER;
-
-  final ActorTask task;
 
   public ActorControl(final Actor actor) {
     this.actor = actor;
@@ -50,58 +47,10 @@ public class ActorControl implements ConcurrencyControl {
     this.task = task;
   }
 
-  /**
-   * changes the actor's scheduling hints. For example, this makes it possible to transform a
-   * cpu-bound actor into an io-bound actor and vice versa.
-   *
-   * @param hints the changed scheduling hints
-   */
-  public void setSchedulingHints(final int hints) {
-    ensureCalledFromWithinActor("resubmit(...)");
-    task.setUpdatedSchedulingHints(hints);
-  }
-
   public static ActorControl current() {
     final ActorThread actorThread = ensureCalledFromActorThread("ActorControl#current");
 
     return new ActorControl(actorThread.currentTask);
-  }
-
-  /**
-   * Consumers are called while the actor is in the following actor lifecycle phases: {@link
-   * ActorLifecyclePhase#STARTED}
-   *
-   * @param channel
-   * @param consumer
-   */
-  public ChannelSubscription consume(final ConsumableChannel channel, final Runnable consumer) {
-    ensureCalledFromWithinActor("consume(...)");
-
-    final ActorJob job = new ActorJob();
-    job.setRunnable(consumer);
-    job.setAutoCompleting(false);
-    job.onJobAddedToTask(task);
-
-    final ChannelConsumerCondition subscription = new ChannelConsumerCondition(job, channel);
-    job.setSubscription(subscription);
-
-    channel.registerConsumer(subscription);
-
-    return subscription;
-  }
-
-  public void pollBlocking(final Runnable condition, final Runnable action) {
-    ensureCalledFromWithinActor("pollBlocking(...)");
-
-    final ActorJob job = new ActorJob();
-    job.setRunnable(action);
-    job.onJobAddedToTask(task);
-
-    final BlockingPollSubscription subscription =
-        new BlockingPollSubscription(job, condition, task.getActorExecutor(), true);
-    job.setSubscription(subscription);
-
-    subscription.submit();
   }
 
   /**
@@ -129,32 +78,6 @@ public class ActorControl implements ConcurrencyControl {
    * Callables actions are called while the actor is in the following actor lifecycle phases: {@link
    * ActorLifecyclePhase#STARTED}
    *
-   * @param callable
-   * @return
-   */
-  @Override
-  @SuppressWarnings("unchecked")
-  public <T> ActorFuture<T> call(final Callable<T> callable) {
-    final ActorThread runner = ActorThread.current();
-    if (runner != null && runner.getCurrentTask() == task) {
-      LOG.error("Incorrect usage of actor.call(...) cannot be called from current actor.");
-      throw new UnsupportedOperationException(
-          "Incorrect usage of actor.call(...) cannot be called from current actor.");
-    }
-
-    final ActorJob job = new ActorJob();
-    final ActorFuture<T> future = job.setCallable(callable);
-    job.onJobAddedToTask(task);
-    job.setAutoCompleting(true);
-    task.submit(job);
-
-    return future;
-  }
-
-  /**
-   * Callables actions are called while the actor is in the following actor lifecycle phases: {@link
-   * ActorLifecyclePhase#STARTED}
-   *
    * @param action
    * @return
    */
@@ -169,6 +92,109 @@ public class ActorControl implements ConcurrencyControl {
   }
 
   /**
+   * Scheduled a repeating timer
+   *
+   * <p>The runnable is executed while the actor is in the following actor lifecycle phases: {@link
+   * ActorLifecyclePhase#STARTED}
+   *
+   * @param delay
+   * @param runnable
+   * @return
+   */
+  public ScheduledTimer runAtFixedRate(final Duration delay, final Runnable runnable) {
+    ensureCalledFromWithinActor("runAtFixedRate(...)");
+    return scheduleTimerSubscription(
+        runnable,
+        job -> new DelayedTimerSubscription(job, delay.toMillis(), TimeUnit.MILLISECONDS, true));
+  }
+
+  /**
+   * Schedule a timer task at (or after) a timestamp.
+   *
+   * <p>The runnable is executed while the actor is in the following actor lifecycle phases: {@link
+   * * ActorLifecyclePhase#STARTED}
+   *
+   * <p>This provides no guarantees that the timer task is run at the timestamp. It's likely that
+   * the timer task is run shortly after the timestamp. We guarantee that the runnable won't run
+   * before the timestamp.
+   *
+   * @param timestamp A unix epoch timestamp in milliseconds
+   * @param runnable The runnable to run at (or after) the timestamp
+   * @return A handle to the scheduled timer task
+   */
+  public ScheduledTimer runAt(final long timestamp, final Runnable runnable) {
+    ensureCalledFromWithinActor("runAt(...)");
+    return scheduleTimerSubscription(runnable, job -> new StampedTimerSubscription(job, timestamp));
+  }
+
+  private TimerSubscription scheduleTimerSubscription(
+      final Runnable runnable, final Function<ActorJob, TimerSubscription> subscriptionFactory) {
+    final ActorJob job = new ActorJob();
+    job.setRunnable(runnable);
+    job.onJobAddedToTask(task);
+
+    final TimerSubscription timerSubscription = subscriptionFactory.apply(job);
+    job.setSubscription(timerSubscription);
+
+    timerSubscription.submit();
+
+    return timerSubscription;
+  }
+
+  /**
+   * Invoke the callback when the given future is completed (successfully or exceptionally). This
+   * call does not block the actor. If close is requested the actor will not wait on this future, in
+   * this case the callback is never called.
+   *
+   * <p>The callback is executed while the actor is in the following actor lifecycle phases: {@link
+   * ActorLifecyclePhase#STARTED}
+   *
+   * @param future the future to wait on
+   * @param callback the callback that handle the future's result. The throwable is <code>null
+   *                 </code> when the future is completed successfully.
+   */
+  @Override
+  public <T> void runOnCompletion(
+      final ActorFuture<T> future, final BiConsumer<T, Throwable> callback) {
+    ensureCalledFromWithinActor("runOnCompletion(...)");
+
+    final ActorLifecyclePhase lifecyclePhase = task.getLifecyclePhase();
+    if (lifecyclePhase != ActorLifecyclePhase.CLOSE_REQUESTED
+        && lifecyclePhase != ActorLifecyclePhase.CLOSED) {
+      submitContinuationJob(
+          future,
+          callback,
+          (job) -> new ActorFutureSubscription(future, job, lifecyclePhase.getValue()));
+    }
+  }
+
+  /**
+   * Invoke the callback when the given futures are completed (successfully or exceptionally). This
+   * call does not block the actor.
+   *
+   * <p>The callback is executed while the actor is in the following actor lifecycle phases: {@link
+   * ActorLifecyclePhase#STARTED}
+   *
+   * @param futures the futures to wait on
+   * @param callback The throwable is <code>null</code> when all futures are completed successfully.
+   *     Otherwise, it holds the exception of the last completed future.
+   */
+  @Override
+  public <T> void runOnCompletion(
+      final Collection<ActorFuture<T>> futures, final Consumer<Throwable> callback) {
+    if (!futures.isEmpty()) {
+      final BiConsumer<T, Throwable> futureConsumer =
+          new AllCompletedFutureConsumer<>(futures.size(), callback);
+
+      for (final ActorFuture<T> future : futures) {
+        runOnCompletion(future, futureConsumer);
+      }
+    } else {
+      callback.accept(null);
+    }
+  }
+
+  /**
    * Runnables submitted by the actor itself are executed while the actor is in any of its lifecycle
    * phases.
    *
@@ -179,7 +205,7 @@ public class ActorControl implements ConcurrencyControl {
    */
   @Override
   public void run(final Runnable action) {
-    scheduleRunnable(action, true);
+    scheduleRunnable(action);
   }
 
   /**
@@ -192,12 +218,10 @@ public class ActorControl implements ConcurrencyControl {
 
     final ActorJob noop = new ActorJob();
     noop.onJobAddedToTask(task);
-    noop.setAutoCompleting(true);
     noop.setRunnable(
         () -> {
           // noop
         });
-
     final BlockingPollSubscription subscription =
         new BlockingPollSubscription(noop, runnable, task.getActorExecutor(), false);
     noop.setSubscription(subscription);
@@ -219,7 +243,6 @@ public class ActorControl implements ConcurrencyControl {
 
     final ActorJob noop = new ActorJob();
     noop.onJobAddedToTask(task);
-    noop.setAutoCompleting(true);
     noop.setRunnable(adapter.wrapConsumer(completionConsumer));
 
     final BlockingPollSubscription subscription =
@@ -230,16 +253,32 @@ public class ActorControl implements ConcurrencyControl {
   }
 
   /**
-   * Run the provided runnable repeatedly until it calls {@link #done()}. To be used for jobs which
-   * may experience backpressure.
+   * Callables actions are called while the actor is in the following actor lifecycle phases: {@link
+   * ActorLifecyclePhase#STARTED}
+   *
+   * @param callable
+   * @return
    */
-  public void runUntilDone(final Runnable runnable) {
-    ensureCalledFromWithinActor("runUntilDone(...)");
-    scheduleRunnable(runnable, false);
+  @Override
+  @SuppressWarnings("unchecked")
+  public <T> ActorFuture<T> call(final Callable<T> callable) {
+    final ActorThread runner = ActorThread.current();
+    if (runner != null && runner.getCurrentTask() == task) {
+      LOG.error("Incorrect usage of actor.call(...) cannot be called from current actor.");
+      throw new UnsupportedOperationException(
+          "Incorrect usage of actor.call(...) cannot be called from current actor.");
+    }
+
+    final ActorJob job = new ActorJob();
+    final ActorFuture<T> future = job.setCallable(callable);
+    job.onJobAddedToTask(task);
+    task.submit(job);
+
+    return future;
   }
 
   /**
-   * The runnable is is executed while the actor is in the following actor lifecycle phases: {@link
+   * The runnable is executed while the actor is in the following actor lifecycle phases: {@link
    * ActorLifecyclePhase#STARTED}
    *
    * @param delay
@@ -249,104 +288,100 @@ public class ActorControl implements ConcurrencyControl {
   @Override
   public ScheduledTimer schedule(final Duration delay, final Runnable runnable) {
     ensureCalledFromWithinActor("runDelayed(...)");
-    return scheduleTimer(delay, false, runnable);
+    return scheduleTimerSubscription(
+        runnable,
+        job -> new DelayedTimerSubscription(job, delay.toMillis(), TimeUnit.MILLISECONDS, false));
   }
 
   /**
-   * Like {@link #run(Runnable)} but submits the runnable to the end end of the actor's queue such
-   * that other other actions may be executed before this. This method is useful in case an actor is
-   * in a (potentially endless) loop and it should be able to interrupt it.
+   * Invoke the callback when the first future is completed successfully, or when all futures are
+   * completed exceptionally. This call does not block the actor.
    *
-   * <p>The runnable is is executed while the actor is in the following actor lifecycle phases:
+   * <p>The callback is is executed while the actor is in the following actor lifecycle phases:
    * {@link ActorLifecyclePhase#STARTED}
+   *
+   * @param futures the futures to wait on
+   * @param callback the callback that handle the future's result. The throwable is <code>null
+   *                 </code> when the first future is completed successfully. Otherwise, it holds
+   *     the exception of the last completed future.
+   * @param closer the callback that is invoked when a future is completed after the first future is
+   *     completed
+   */
+  public <T> void runOnFirstCompletion(
+      final Collection<ActorFuture<T>> futures,
+      final BiConsumer<T, Throwable> callback,
+      final Consumer<T> closer) {
+    final BiConsumer<T, Throwable> futureConsumer =
+        new FirstSuccessfullyCompletedFutureConsumer<>(futures.size(), callback, closer);
+
+    for (final ActorFuture<T> future : futures) {
+      runOnCompletion(future, futureConsumer);
+    }
+  }
+
+  /**
+   * Run the provided runnable repeatedly until it calls. To be used for jobs which may experience
+   * backpressure.
+   */
+  public void runUntilDone(final Runnable runnable) {
+    ensureCalledFromWithinActor("runUntilDone(...)");
+    scheduleRunnable(runnable);
+  }
+
+  /**
+   * Invoke the callback when the first future is completed successfully, or when all futures are
+   * completed exceptionally. This call does not block the actor.
+   *
+   * <p>The callback is is executed while the actor is in the following actor lifecycle phases:
+   * {@link ActorLifecyclePhase#STARTED}
+   *
+   * @param futures the futures to wait on
+   * @param callback the callback that handle the future's result. The throwable is <code>null
+   *                 </code> when the first future is completed successfully. Otherwise, it holds
+   *     the exception of the last completed future.
+   */
+  public <T> void runOnFirstCompletion(
+      final Collection<ActorFuture<T>> futures, final BiConsumer<T, Throwable> callback) {
+    runOnFirstCompletion(futures, callback, null);
+  }
+
+  /**
+   * Like {@link #run(Runnable)} but submits the runnable to the end of the actor's queue such that
+   * other actions may be executed before this. This method is useful in case an actor is in a
+   * (potentially endless) loop, and it should be able to interrupt it.
+   *
+   * <p>The runnable is executed while the actor is in the following actor lifecycle phases: {@link
+   * ActorLifecyclePhase#STARTED}
    *
    * @param action the action to run.
    */
   public void submit(final Runnable action) {
-    final ActorThread currentActorRunner = ensureCalledFromActorThread("run(...)");
-    final ActorTask currentTask = currentActorRunner.getCurrentTask();
-
+    final ActorThread currentThread = ActorThread.current();
+    final ActorTask currentTask = currentThread == null ? null : currentThread.getCurrentTask();
     final ActorJob job;
-    if (currentTask == task) {
-      job = currentActorRunner.newJob();
+
+    if (currentThread != null && currentTask == task) {
+      job = currentThread.newJob();
     } else {
       job = new ActorJob();
     }
 
     job.setRunnable(action);
-    job.setAutoCompleting(true);
     job.onJobAddedToTask(task);
     task.submit(job);
 
-    if (currentTask == task) {
+    if (currentTask != null && currentTask == task) {
       yieldThread();
-    }
-  }
-
-  /**
-   * Scheduled a repeating timer
-   *
-   * <p>The runnable is is executed while the actor is in the following actor lifecycle phases:
-   * {@link ActorLifecyclePhase#STARTED}
-   *
-   * @param delay
-   * @param runnable
-   * @return
-   */
-  public ScheduledTimer runAtFixedRate(final Duration delay, final Runnable runnable) {
-    ensureCalledFromWithinActor("runAtFixedRate(...)");
-    return scheduleTimer(delay, true, runnable);
-  }
-
-  private TimerSubscription scheduleTimer(
-      final Duration delay, final boolean isRecurring, final Runnable runnable) {
-    final ActorJob job = new ActorJob();
-    job.setRunnable(runnable);
-    job.onJobAddedToTask(task);
-
-    final TimerSubscription timerSubscription =
-        new TimerSubscription(job, delay.toNanos(), TimeUnit.NANOSECONDS, isRecurring);
-    job.setSubscription(timerSubscription);
-
-    timerSubscription.submit();
-
-    return timerSubscription;
-  }
-
-  /**
-   * Invoke the callback when the given future is completed (successfully or exceptionally). This
-   * call does not block the actor. If close is requested the actor will not wait on this future, in
-   * this case the callback is never called.
-   *
-   * <p>The callback is is executed while the actor is in the following actor lifecycle phases:
-   * {@link ActorLifecyclePhase#STARTED}
-   *
-   * @param future the future to wait on
-   * @param callback the callback that handle the future's result. The throwable is <code>null
-   *     </code> when the future is completed successfully.
-   */
-  @Override
-  public <T> void runOnCompletion(
-      final ActorFuture<T> future, final BiConsumer<T, Throwable> callback) {
-    ensureCalledFromWithinActor("runOnCompletion(...)");
-
-    final ActorLifecyclePhase lifecyclePhase = task.getLifecyclePhase();
-    if (lifecyclePhase != ActorLifecyclePhase.CLOSE_REQUESTED
-        && lifecyclePhase != ActorLifecyclePhase.CLOSED) {
-      submitContinuationJob(
-          future,
-          callback,
-          (job) -> new ActorFutureSubscription(future, job, lifecyclePhase.getValue()));
     }
   }
 
   /**
    * Invoke the callback when the given future is completed (successfully or exceptionally). This
    * call does not block the actor. If close is requested the actor will wait on this future and not
-   * change the phase, in this case the callback will eventually called.
+   * change the phase, in this case the callback will eventually be called.
    *
-   * <p>The callback is is executed while the actor is in the following actor lifecycle phases:
-   * {@link ActorLifecyclePhase#STARTED}
+   * <p>The callback is executed while the actor is in the following actor lifecycle phases: {@link
+   * ActorLifecyclePhase#STARTED}
    *
    * @param future the future to wait on
    * @param callback the callback that handle the future's result. The throwable is <code>null
@@ -376,82 +411,12 @@ public class ActorControl implements ConcurrencyControl {
       final Function<ActorJob, ActorFutureSubscription> futureSubscriptionSupplier) {
     final ActorJob continuationJob = new ActorJob();
     continuationJob.setRunnable(new FutureContinuationRunnable<>(future, callback));
-    continuationJob.setAutoCompleting(true);
     continuationJob.onJobAddedToTask(task);
 
     final ActorFutureSubscription subscription = futureSubscriptionSupplier.apply(continuationJob);
     continuationJob.setSubscription(subscription);
 
     future.block(task);
-  }
-
-  /**
-   * Invoke the callback when the given futures are completed (successfully or exceptionally). This
-   * call does not block the actor.
-   *
-   * <p>The callback is is executed while the actor is in the following actor lifecycle phases:
-   * {@link ActorLifecyclePhase#STARTED}
-   *
-   * @param futures the futures to wait on
-   * @param callback The throwable is <code>null</code> when all futures are completed successfully.
-   *     Otherwise, it holds the exception of the last completed future.
-   */
-  @Override
-  public <T> void runOnCompletion(
-      final Collection<ActorFuture<T>> futures, final Consumer<Throwable> callback) {
-    if (!futures.isEmpty()) {
-      final BiConsumer<T, Throwable> futureConsumer =
-          new AllCompletedFutureConsumer<>(futures.size(), callback);
-
-      for (final ActorFuture<T> future : futures) {
-        runOnCompletion(future, futureConsumer);
-      }
-    } else {
-      callback.accept(null);
-    }
-  }
-
-  /**
-   * Invoke the callback when the first future is completed successfully, or when all futures are
-   * completed exceptionally. This call does not block the actor.
-   *
-   * <p>The callback is is executed while the actor is in the following actor lifecycle phases:
-   * {@link ActorLifecyclePhase#STARTED}
-   *
-   * @param futures the futures to wait on
-   * @param callback the callback that handle the future's result. The throwable is <code>null
-   *     </code> when the first future is completed successfully. Otherwise, it holds the exception
-   *     of the last completed future.
-   */
-  public <T> void runOnFirstCompletion(
-      final Collection<ActorFuture<T>> futures, final BiConsumer<T, Throwable> callback) {
-    runOnFirstCompletion(futures, callback, null);
-  }
-
-  /**
-   * Invoke the callback when the first future is completed successfully, or when all futures are
-   * completed exceptionally. This call does not block the actor.
-   *
-   * <p>The callback is is executed while the actor is in the following actor lifecycle phases:
-   * {@link ActorLifecyclePhase#STARTED}
-   *
-   * @param futures the futures to wait on
-   * @param callback the callback that handle the future's result. The throwable is <code>null
-   *     </code> when the first future is completed successfully. Otherwise, it holds the exception
-   *     of the last completed future.
-   * @param closer the callback that is invoked when a future is completed after the first future is
-   *     completed
-   */
-  public <T> void runOnFirstCompletion(
-      final Collection<ActorFuture<T>> futures,
-      final BiConsumer<T, Throwable> callback,
-      final Consumer<T> closer) {
-    final BiConsumer<T, Throwable> futureConsumer =
-        new FirstSuccessfullyCompletedFutureConsumer<>(futures.size(), callback, closer);
-
-    for (final ActorFuture<T> future : futures) {
-      runOnCompletion(future, futureConsumer);
-    }
   }
 
   /** can be called by the actor to yield the thread */
@@ -464,7 +429,6 @@ public class ActorControl implements ConcurrencyControl {
     final ActorJob closeJob = new ActorJob();
 
     closeJob.onJobAddedToTask(task);
-    closeJob.setAutoCompleting(true);
     closeJob.setRunnable(task::requestClose);
 
     task.submit(closeJob);
@@ -472,27 +436,20 @@ public class ActorControl implements ConcurrencyControl {
     return task.closeFuture;
   }
 
-  private void scheduleRunnable(final Runnable runnable, final boolean autocompleting) {
+  private void scheduleRunnable(final Runnable runnable) {
     final ActorThread currentActorThread = ActorThread.current();
 
     if (currentActorThread != null && currentActorThread.getCurrentTask() == task) {
       final ActorJob newJob = currentActorThread.newJob();
       newJob.setRunnable(runnable);
-      newJob.setAutoCompleting(autocompleting);
       newJob.onJobAddedToTask(task);
       task.insertJob(newJob);
     } else {
       final ActorJob job = new ActorJob();
       job.setRunnable(runnable);
-      job.setAutoCompleting(autocompleting);
       job.onJobAddedToTask(task);
       task.submit(job);
     }
-  }
-
-  public void done() {
-    final ActorJob job = ensureCalledFromWithinActor("done()");
-    job.markDone();
   }
 
   public boolean isClosing() {
@@ -505,11 +462,6 @@ public class ActorControl implements ConcurrencyControl {
     final ActorLifecyclePhase lifecyclePhase = task.getLifecyclePhase();
     return !(lifecyclePhase == ActorLifecyclePhase.STARTING
         || lifecyclePhase == ActorLifecyclePhase.STARTED);
-  }
-
-  public void setPriority(final ActorPriority priority) {
-    ensureCalledFromActorThread("setPriority()");
-    task.setPriority(priority.getPriorityClass());
   }
 
   public ActorLifecyclePhase getLifecyclePhase() {
@@ -536,20 +488,9 @@ public class ActorControl implements ConcurrencyControl {
     return currentJob;
   }
 
-  private static ActorThread ensureCalledFromActorThread(final String methodName) {
-    final ActorThread thread = ActorThread.current();
-
-    if (thread == null) {
-      LOG.error("Incorrect usage of actor.{}: must be called from actor thread", methodName);
-      throw new UnsupportedOperationException(
-          "Incorrect usage of actor. " + methodName + ": must be called from actor thread");
-    }
-
-    return thread;
-  }
-
-  @Override
-  public <V> ActorFuture<V> createFuture() {
-    return ConcurrencyControl.super.createFuture();
+  /** Mark actor as failed. This sets the lifecycle phase to 'FAILED' and discards all jobs. */
+  public void fail(final Throwable error) {
+    ensureCalledFromWithinActor("fail()");
+    task.fail(error);
   }
 }

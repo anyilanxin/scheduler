@@ -16,11 +16,13 @@
  */
 package com.anyilanxin.scheduler;
 
+import org.slf4j.Logger;
+
 public class BlockingPollSubscription implements ActorSubscription, Runnable {
   private final ActorJob subscriptionJob;
   private final Runnable blockingAction;
   private final ActorExecutor actorTaskExecutor;
-
+  private static final Logger LOG = Loggers.ACTOR_LOGGER;
   private volatile boolean isDone;
   private final boolean isRecurring;
 
@@ -55,8 +57,7 @@ public class BlockingPollSubscription implements ActorSubscription, Runnable {
     try {
       blockingAction.run();
     } catch (final Exception e) {
-      e.printStackTrace();
-      // TODO: what now?
+      LOG.error("Blocking Poll Subscription Error.", e);
     } finally {
       onBlockingActionCompleted();
     }

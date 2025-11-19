@@ -16,109 +16,38 @@
  */
 package com.anyilanxin.scheduler;
 
+import com.anyilanxin.scheduler.clock.ActorClock;
 import java.util.concurrent.TimeUnit;
 
-public class TimerSubscription implements ActorSubscription, ScheduledTimer, Runnable {
-  private volatile boolean isDone = false;
-  private volatile boolean isCanceled = false;
-
-  private final ActorJob job;
-  private final ActorTask task;
-  private final TimeUnit timeUnit;
-  private final long deadline;
-  private final boolean isRecurring;
-
-  private long timerId = -1L;
-  private ActorThread thread;
-
-  public TimerSubscription(
-      final ActorJob job, final long deadline, final TimeUnit timeUnit, final boolean isRecurring) {
-    this.job = job;
-    task = job.getTask();
-    this.timeUnit = timeUnit;
-    this.deadline = deadline;
-    this.isRecurring = isRecurring;
-  }
+public interface TimerSubscription extends ActorSubscription, ScheduledTimer, Runnable {
 
   @Override
-  public boolean poll() {
-    return isDone;
-  }
+  boolean poll();
 
   @Override
-  public ActorJob getJob() {
-    return job;
-  }
+  ActorJob getJob();
 
   @Override
-  public boolean isRecurring() {
-    return isRecurring;
-  }
+  boolean isRecurring();
 
   @Override
-  public void onJobCompleted() {
-
-    if (isRecurring && !isCanceled) {
-      isDone = false;
-      submit();
-    }
-  }
-
-  public void setTimerId(final long timerId) {
-    this.timerId = timerId;
-  }
-
-  public long getTimerId() {
-    return timerId;
-  }
+  void onJobCompleted();
 
   @Override
-  public void cancel() {
-    if (!isCanceled && (!isDone || isRecurring)) {
-      task.onSubscriptionCancelled(this);
-      isCanceled = true;
-      final ActorThread current = ActorThread.current();
+  void cancel();
 
-      if (current != thread) {
-        thread.submittedCallbacks.add(this);
-      } else {
-        run();
-      }
-    }
-  }
+  long getTimerId();
 
-  public void submit() {
-    thread = ActorThread.current();
-    thread.scheduleTimer(this);
-  }
+  void setTimerId(long timerId);
 
-  public long getDeadline() {
-    return deadline;
-  }
+  void submit();
 
-  public TimeUnit getTimeUnit() {
-    return timeUnit;
-  }
+  long getDeadline(ActorClock now);
 
-  public void onTimerExpired(final TimeUnit timeUnit, final long now) {
-    if (!isCanceled) {
-      isDone = true;
-      task.tryWakeup();
-    }
-  }
+  void onTimerExpired(TimeUnit timeUnit, long now);
 
   @Override
-  public void run() {
-    thread.removeTimer(this);
-  }
+  void run();
 
-  @Override
-  public boolean equals(final Object o) {
-    return super.equals(o);
-  }
-
-  @Override
-  public int hashCode() {
-    return super.hashCode();
-  }
+  long getTimerExpiredAt();
 }

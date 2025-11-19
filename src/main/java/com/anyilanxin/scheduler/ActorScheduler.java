@@ -23,26 +23,18 @@ import java.util.Arrays;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import org.slf4j.Logger;
 
 public class ActorScheduler implements AutoCloseable, ActorSchedulingService {
   private final AtomicReference<SchedulerState> state = new AtomicReference<>();
   private final ActorExecutor actorTaskExecutor;
   private final String schedulerName;
+  private static final Logger LOG = Loggers.ACTOR_LOGGER;
 
   public ActorScheduler(final ActorSchedulerBuilder builder) {
     state.set(SchedulerState.NEW);
     actorTaskExecutor = builder.getActorExecutor();
     schedulerName = builder.schedulerName;
-  }
-
-  @Override
-  public String actorSchedulerName() {
-    return schedulerName;
-  }
-
-  @Override
-  public void close() throws Exception {
-    stop().get(10, TimeUnit.SECONDS);
   }
 
   /**
@@ -67,7 +59,7 @@ public class ActorScheduler implements AutoCloseable, ActorSchedulingService {
    *       by the actor.
    * </ul>
    *
-   * Scheduling hints can be created using the {@link SchedulingHints} class.
+   * <p>Scheduling hints can be created using the {@link SchedulingHints} class.
    *
    * @param actor the actor to submit
    * @param schedulingHints additional scheduling hint
@@ -78,7 +70,7 @@ public class ActorScheduler implements AutoCloseable, ActorSchedulingService {
 
     final ActorFuture<Void> startingFuture;
     if (SchedulingHints.isCpuBound(schedulingHints)) {
-      task.setPriority(SchedulingHints.getPriority(schedulingHints));
+      //      task.setPriority(SchedulingHints.getPriority(schedulingHints));
       startingFuture = actorTaskExecutor.submitCpuBound(task);
     } else {
       startingFuture = actorTaskExecutor.submitIoBoundTask(task);
@@ -86,10 +78,16 @@ public class ActorScheduler implements AutoCloseable, ActorSchedulingService {
     return startingFuture;
   }
 
+  @Override
+  public String actorSchedulerName() {
+    return schedulerName;
+  }
+
   public void start() {
     if (state.compareAndSet(SchedulerState.NEW, SchedulerState.RUNNING)) {
       actorTaskExecutor.start();
     } else {
+      LOG.error("Cannot start scheduler already started.");
       throw new IllegalStateException("Cannot start scheduler already started.");
     }
   }
@@ -104,6 +102,7 @@ public class ActorScheduler implements AutoCloseable, ActorSchedulingService {
                 state.set(SchedulerState.TERMINATED);
               });
     } else {
+      LOG.error("Cannot stop scheduler not running.");
       throw new IllegalStateException("Cannot stop scheduler not running");
     }
   }
@@ -135,7 +134,6 @@ public class ActorScheduler implements AutoCloseable, ActorSchedulingService {
     private ThreadPoolExecutor blockingTasksRunner;
     private Duration blockingTasksShutdownTime = Duration.ofSeconds(15);
     private ActorExecutor actorExecutor;
-
     private ActorTimerQueue actorTimerQueue;
 
     public ActorSchedulerBuilder setActorTimerQueue(final ActorTimerQueue actorTimerQueue) {
@@ -281,6 +279,7 @@ public class ActorScheduler implements AutoCloseable, ActorSchedulingService {
   }
 
   public static class DefaultActorThreadFactory implements ActorThreadFactory {
+
     @Override
     public ActorThread newThread(
         final String name,
@@ -316,5 +315,10 @@ public class ActorScheduler implements AutoCloseable, ActorSchedulingService {
     TERMINATING,
     // scheduler is not reusable
     TERMINATED
+  }
+
+  @Override
+  public void close() throws Exception {
+    stop().get(10, TimeUnit.SECONDS);
   }
 }

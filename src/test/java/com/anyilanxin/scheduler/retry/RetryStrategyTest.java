@@ -16,14 +16,10 @@
  */
 package com.anyilanxin.scheduler.retry;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import com.anyilanxin.scheduler.Actor;
 import com.anyilanxin.scheduler.ActorControl;
 import com.anyilanxin.scheduler.future.ActorFuture;
 import com.anyilanxin.scheduler.testing.ControlledActorSchedulerRule;
-import java.lang.reflect.Constructor;
-import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -31,6 +27,11 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
+
+import java.lang.reflect.Constructor;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 @RunWith(Parameterized.class)
 public class RetryStrategyTest {

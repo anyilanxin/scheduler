@@ -16,14 +16,12 @@
  */
 package com.anyilanxin.scheduler.lifecycle;
 
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-
 import com.anyilanxin.scheduler.future.CompletableActorFuture;
 import com.anyilanxin.scheduler.testing.ControlledActorSchedulerRule;
 import org.junit.Rule;
 import org.junit.Test;
+
+import static org.mockito.Mockito.*;
 
 public class ActorLifecyclePhasesAndSubmitTest {
   @Rule

@@ -27,23 +27,17 @@ import java.util.function.Consumer;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * Concurrency control interface
- *
- * @author zxuanhong
- * @date 2025/11/18
+ * Control interface to schedule tasks or follow-up tasks such that different tasks scheduled via
+ * the same {@code ConcurrencyControl} object are never executed concurrently
  */
 public interface ConcurrencyControl extends Executor {
+
   /**
-   * Invoke the callback when the given future is completed (successfully or exceptionally). This
-   * call does not block the actor. If close is requested the actor will not wait on this future, in
-   * this case the callback is never called.
+   * Schedules a callback to be invoked after the future has completed
    *
-   * <p>The callback is is executed while the actor is in the following actor lifecycle phases:
-   * {@link ActorTask.ActorLifecyclePhase#STARTED}
-   *
-   * @param future the future to wait on
-   * @param callback the callback that handle the future's result. The throwable is <code>null
-   *                 </code> when the future is completed successfully.
+   * @param future the future whose completion is awaited
+   * @param callback the callback to call after the future has completed
+   * @param <T> result type of the future
    */
   <T> void runOnCompletion(final ActorFuture<T> future, final BiConsumer<T, Throwable> callback);
 
@@ -51,8 +45,8 @@ public interface ConcurrencyControl extends Executor {
    * Invoke the callback when the given futures are completed (successfully or exceptionally). This
    * call does not block the actor.
    *
-   * <p>The callback is is executed while the actor is in the following actor lifecycle phases:
-   * {@link ActorTask.ActorLifecyclePhase#STARTED}
+   * <p>The callback is executed while the actor is in the following actor lifecycle phases: {@link
+   * ActorTask.ActorLifecyclePhase#STARTED}
    *
    * @param futures the futures to wait on
    * @param callback The throwable is <code>null</code> when all futures are completed successfully.
@@ -62,33 +56,22 @@ public interface ConcurrencyControl extends Executor {
       final Collection<ActorFuture<T>> futures, final Consumer<Throwable> callback);
 
   /**
-   * Runnables submitted by the actor itself are executed while the actor is in any of its lifecycle
-   * phases.
+   * Schedules an action to be invoked (must be called from an actor thread)
    *
-   * <p>Runnables submitted externally are executed while the actor is in the following actor
-   * lifecycle phases: {@link ActorTask.ActorLifecyclePhase#STARTED}
-   *
-   * @param action
+   * @param action action to be invoked
    */
   void run(final Runnable action);
 
   /**
-   * Callables actions are called while the actor is in the following actor lifecycle phases: {@link
-   * ActorTask.ActorLifecyclePhase#STARTED}
+   * Schedules a callable to be executed
    *
-   * @param callable
-   * @return
+   * @param callable callable to be executed
+   * @param <T> type of the result
+   * @return a future with the result
    */
   <T> ActorFuture<T> call(final Callable<T> callable);
 
-  /**
-   * The runnable is is executed while the actor is in the following actor lifecycle phases: {@link
-   * ActorTask.ActorLifecyclePhase#STARTED}
-   *
-   * @param delay
-   * @param runnable
-   * @return
-   */
+  /** Schedule a task to be executed after a delay */
   ScheduledTimer schedule(final Duration delay, final Runnable runnable);
 
   /**

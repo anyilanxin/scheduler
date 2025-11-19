@@ -20,74 +20,63 @@ import com.anyilanxin.scheduler.ActorTask.TaskSchedulingState;
 import com.anyilanxin.scheduler.future.ActorFuture;
 import com.anyilanxin.scheduler.future.CompletableActorFuture;
 import java.util.concurrent.Callable;
+import org.jetbrains.annotations.Async;
+import org.slf4j.Logger;
 
 @SuppressWarnings({"unchecked", "rawtypes"})
-public class ActorJob {
+public final class ActorJob {
+  private static final Logger LOG = Loggers.ACTOR_LOGGER;
+
   TaskSchedulingState schedulingState;
-
-  Actor actor;
   ActorTask task;
-
   private Callable<?> callable;
   private Runnable runnable;
-  private Object invocationResult;
-  private boolean isAutoCompleting;
-  private boolean isDoneCalled;
-
   private ActorFuture resultFuture;
-
-  ActorThread actorThread;
-
   private ActorSubscription subscription;
+  private long scheduledAt = -1;
 
   public void onJobAddedToTask(final ActorTask task) {
-    actor = task.actor;
+    scheduledAt = System.nanoTime();
     this.task = task;
     schedulingState = TaskSchedulingState.QUEUED;
   }
 
+  @Async.Execute
   void execute(final ActorThread runner) {
-    actorThread = runner;
     try {
       invoke();
-
-      if (resultFuture != null) {
-        resultFuture.complete(invocationResult);
-        resultFuture = null;
-      }
-
     } catch (final Throwable e) {
+      LOG.error("actor job execute error.", e);
       task.onFailure(e);
     } finally {
-      actorThread = null;
-
       // in any case, success or exception, decide if the job should be resubmitted
-      if (isTriggeredBySubscription() || (isAutoCompleting && runnable == null) || isDoneCalled) {
+      if (isTriggeredBySubscription() || runnable == null) {
         schedulingState = TaskSchedulingState.TERMINATED;
       } else {
         schedulingState = TaskSchedulingState.QUEUED;
+        scheduledAt = System.nanoTime();
       }
     }
   }
 
   private void invoke() throws Exception {
+    final Object invocationResult;
     if (callable != null) {
       invocationResult = callable.call();
     } else {
+      invocationResult = null;
+      // only tasks triggered by a subscription can "yield"; everything else just executes once
       if (!isTriggeredBySubscription()) {
-        // TODO: preempt after fixed number of iterations
-        while (runnable != null && !task.shouldYield && !isDoneCalled) {
-          final Runnable r = runnable;
-
-          if (isAutoCompleting) {
-            runnable = null;
-          }
-
-          r.run();
-        }
+        final Runnable r = runnable;
+        runnable = null;
+        r.run();
       } else {
         runnable.run();
       }
+    }
+    if (resultFuture != null) {
+      resultFuture.complete(invocationResult);
+      resultFuture = null;
     }
   }
 
@@ -104,53 +93,47 @@ public class ActorJob {
   /** used to recycle the job object */
   void reset() {
     schedulingState = TaskSchedulingState.NOT_SCHEDULED;
-
-    actor = null;
+    scheduledAt = -1;
 
     task = null;
-    actorThread = null;
 
     callable = null;
     runnable = null;
-    invocationResult = null;
-    isAutoCompleting = true;
-    isDoneCalled = false;
 
     resultFuture = null;
     subscription = null;
   }
 
-  public void markDone() {
-    if (isAutoCompleting) {
-      throw new UnsupportedOperationException(
-          "Incorrect use of actor.done(). Can only be called in methods submitted using actor.runUntilDone(Runnable r)");
-    }
-
-    isDoneCalled = true;
-  }
-
-  public void setAutoCompleting(final boolean isAutoCompleting) {
-    this.isAutoCompleting = isAutoCompleting;
-  }
-
   @Override
   public String toString() {
-    String toString = "";
-
-    if (runnable != null) {
-      toString += runnable.getClass().getName();
-    }
+    final StringBuilder sb = new StringBuilder("ActorJob{");
+    sb.append("schedulingState=").append(schedulingState);
+    sb.append(", task=").append(task);
     if (callable != null) {
-      toString += callable.getClass().getName();
+      sb.append(", callable=").append(callable);
     }
-
-    toString += " " + schedulingState;
-
-    return toString;
+    if (runnable != null) {
+      sb.append(", runnable=").append(runnable);
+    }
+    if (resultFuture != null) {
+      sb.append(", resultFuture=").append(resultFuture);
+    }
+    if (subscription != null) {
+      sb.append(", subscription=").append(subscription);
+    }
+    if (scheduledAt != -1) {
+      sb.append(", scheduledAt=").append(scheduledAt);
+    }
+    sb.append('}');
+    return sb.toString();
   }
 
   public boolean isTriggeredBySubscription() {
     return subscription != null;
+  }
+
+  public ActorSubscription getSubscription() {
+    return subscription;
   }
 
   public void setSubscription(final ActorSubscription subscription) {
@@ -158,16 +141,12 @@ public class ActorJob {
     task.addSubscription(subscription);
   }
 
-  public ActorSubscription getSubscription() {
-    return subscription;
-  }
-
   public ActorTask getTask() {
     return task;
   }
 
   public Actor getActor() {
-    return actor;
+    return task.actor;
   }
 
   public void setResultFuture(final ActorFuture resultFuture) {

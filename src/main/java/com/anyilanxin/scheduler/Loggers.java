@@ -19,8 +19,14 @@ package com.anyilanxin.scheduler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public final class Loggers {
-  private Loggers() {}
+public class Loggers {
 
-  public static final Logger ACTOR_LOGGER = LoggerFactory.getLogger("com.anyilanxin.scheduler");
+  public static final Logger ACTOR_LOGGER =
+      LoggerFactory.getLogger("com.anyilanxin.schedule.actor");
+
+  public static final Logger RETRY_LOGGER =
+      LoggerFactory.getLogger("com.anyilanxin.schedule.retry");
+
+  public static final Logger FUTURE_LOGGER =
+      LoggerFactory.getLogger("com.anyilanxin.schedule.future");
 }

@@ -42,15 +42,14 @@ import java.util.concurrent.locks.LockSupport;
 import java.util.function.Consumer;
 import org.agrona.concurrent.BackoffIdleStrategy;
 import org.agrona.concurrent.ManyToManyConcurrentArrayQueue;
+import org.slf4j.Logger;
 import org.slf4j.MDC;
 
 @SuppressWarnings("restriction")
 public class ActorThread extends Thread implements Consumer<Runnable> {
-
   private volatile ActorThreadState state;
-
   private static final VarHandle STATE_VAR_HANDLE;
-
+  private static final Logger LOG = Loggers.ACTOR_LOGGER;
   private final CompletableFuture<Void> terminationFuture = new CompletableFuture<>();
 
   public final ManyToManyConcurrentArrayQueue<Runnable> submittedCallbacks =
@@ -67,6 +66,11 @@ public class ActorThread extends Thread implements Consumer<Runnable> {
     }
   }
 
+  public static boolean isCalledFromActorThread() {
+    final ActorThread thread = ActorThread.current();
+    return thread != null;
+  }
+
   private final int threadId;
 
   private final TaskScheduler taskScheduler;
@@ -75,7 +79,6 @@ public class ActorThread extends Thread implements Consumer<Runnable> {
 
   private final BoundedArrayQueue<ActorJob> jobs = new BoundedArrayQueue<>(2048);
   private final ActorThreadGroup actorThreadGroup;
-
   protected ActorTaskRunnerIdleStrategy idleStrategy = new ActorTaskRunnerIdleStrategy();
 
   ActorTask currentTask;
@@ -99,12 +102,13 @@ public class ActorThread extends Thread implements Consumer<Runnable> {
   @Override
   public void run() {
     idleStrategy.init();
+    MDC.put("actor-scheduler", actorThreadGroup.getSchedulerName());
 
     while (state == ActorThreadState.RUNNING) {
       try {
         doWork();
       } catch (final Exception e) {
-        e.printStackTrace();
+        LOG.error("Unexpected error occurred while in the actor thread {}", getName(), e);
       }
     }
 
@@ -123,11 +127,7 @@ public class ActorThread extends Thread implements Consumer<Runnable> {
     currentTask = taskScheduler.getNextTask(clock);
 
     if (currentTask != null) {
-      try {
-        executeCurrentTask();
-      } finally {
-        taskScheduler.onTaskReleased(currentTask);
-      }
+      executeCurrentTask();
     } else {
       idleStrategy.onIdle();
     }
@@ -135,26 +135,21 @@ public class ActorThread extends Thread implements Consumer<Runnable> {
 
   private void executeCurrentTask() {
     final var properties = currentTask.getActor().getContext();
+    boolean resubmit = false;
+
     for (final var property : properties.entrySet()) {
       MDC.put(property.getKey(), property.getValue());
     }
-    idleStrategy.onTaskExecuted();
 
-    boolean resubmit = false;
+    idleStrategy.onTaskExecuted();
 
     try {
       resubmit = currentTask.execute(this);
-    } catch (final Exception e) {
-      // TODO: check interrupt state?
-      // TODO: Handle Exception
-      e.printStackTrace();
-
-      // TODO: resubmit on exception?
-      //                resubmit = true;
+    } catch (final Throwable e) {
+      LOG.error("Unexpected error occurred in task {}", currentTask, e);
     } finally {
-      properties.keySet().forEach(MDC::remove);
-
       clock.update();
+      properties.keySet().forEach(MDC::remove);
     }
 
     if (resubmit) {
@@ -162,9 +157,16 @@ public class ActorThread extends Thread implements Consumer<Runnable> {
     }
   }
 
-  public static boolean isCalledFromActorThread() {
+  public static ActorThread ensureCalledFromActorThread(final String methodName) {
     final ActorThread thread = ActorThread.current();
-    return thread != null;
+
+    if (thread == null) {
+      LOG.error("Incorrect usage of actor. {}: must be called from actor thread", methodName);
+      throw new UnsupportedOperationException(
+          "Incorrect usage of actor. " + methodName + ": must be called from actor thread");
+    }
+
+    return thread;
   }
 
   public void hintWorkAvailable() {
@@ -262,6 +264,7 @@ public class ActorThread extends Thread implements Consumer<Runnable> {
     if (STATE_VAR_HANDLE.compareAndSet(this, ActorThreadState.NEW, ActorThreadState.RUNNING)) {
       super.start();
     } else {
+      LOG.error("Cannot start runner, not in state 'NEW'.");
       throw new IllegalStateException("Cannot start runner, not in state 'NEW'.");
     }
   }
@@ -271,6 +274,7 @@ public class ActorThread extends Thread implements Consumer<Runnable> {
         this, ActorThreadState.RUNNING, ActorThreadState.TERMINATING)) {
       return terminationFuture;
     } else {
+      LOG.error("Cannot stop runner, not in state 'RUNNING'.");
       throw new IllegalStateException("Cannot stop runner, not in state 'RUNNING'.");
     }
   }
@@ -279,8 +283,7 @@ public class ActorThread extends Thread implements Consumer<Runnable> {
     NEW,
     RUNNING,
     TERMINATING,
-    // runner is not reusable
-    TERMINATED
+    TERMINATED // runner is not reusable
   }
 
   public ActorJob getCurrentJob() {

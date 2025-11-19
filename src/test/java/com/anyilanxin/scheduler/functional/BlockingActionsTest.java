@@ -16,19 +16,16 @@
  */
 package com.anyilanxin.scheduler.functional;
 
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.inOrder;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-
 import com.anyilanxin.scheduler.Actor;
 import com.anyilanxin.scheduler.testing.ControlledActorSchedulerRule;
-import java.util.function.Consumer;
 import org.junit.Rule;
 import org.junit.Test;
 import org.mockito.InOrder;
+
+import java.util.function.Consumer;
+
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
 
 @SuppressWarnings("unchecked")
 public class BlockingActionsTest {

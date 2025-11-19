@@ -18,10 +18,7 @@ package com.anyilanxin.scheduler;
 
 import static org.agrona.BitUtil.findNextPositivePowerOfTwo;
 
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.NoSuchElementException;
-import java.util.Queue;
+import java.util.*;
 
 /** Non concurrent, garbage-free array queue with fixed capacity. */
 public class BoundedArrayQueue<P> implements Iterable<P>, Queue<P> {
@@ -46,9 +43,7 @@ public class BoundedArrayQueue<P> implements Iterable<P>, Queue<P> {
   @Override
   public void clear() {
     head = tail = 0;
-    for (int i = 0; i < array.length; i++) {
-      array[i] = null;
-    }
+    Arrays.fill(array, null);
     iterator.reset();
   }
 
@@ -128,8 +123,8 @@ public class BoundedArrayQueue<P> implements Iterable<P>, Queue<P> {
   public boolean contains(final Object o) {
     boolean contains = false;
 
-    for (int i = 0; i < array.length; i++) {
-      if (array[i] == o) {
+    for (final Object object : array) {
+      if (object == o) {
         contains = true;
         break;
       }

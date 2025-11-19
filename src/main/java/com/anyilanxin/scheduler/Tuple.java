@@ -42,13 +42,7 @@ public class Tuple<L, R> {
 
   @Override
   public String toString() {
-    final StringBuilder builder = new StringBuilder();
-    builder.append("<");
-    builder.append(left);
-    builder.append(", ");
-    builder.append(right);
-    builder.append(">");
-    return builder.toString();
+    return "<" + left + ", " + right + ">";
   }
 
   @Override
@@ -80,12 +74,9 @@ public class Tuple<L, R> {
       return false;
     }
     if (right == null) {
-      if (other.right != null) {
-        return false;
-      }
-    } else if (!right.equals(other.right)) {
-      return false;
+      return other.right == null;
+    } else {
+      return right.equals(other.right);
     }
-    return true;
   }
 }

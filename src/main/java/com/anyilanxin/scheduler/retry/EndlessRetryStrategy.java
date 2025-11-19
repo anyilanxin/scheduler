@@ -17,11 +17,15 @@
 package com.anyilanxin.scheduler.retry;
 
 import com.anyilanxin.scheduler.ActorControl;
+import com.anyilanxin.scheduler.Loggers;
 import com.anyilanxin.scheduler.future.ActorFuture;
 import com.anyilanxin.scheduler.future.CompletableActorFuture;
 import java.util.function.BooleanSupplier;
+import org.slf4j.Logger;
 
-public class EndlessRetryStrategy implements RetryStrategy {
+public final class EndlessRetryStrategy implements RetryStrategy {
+
+  private static final Logger LOG = Loggers.RETRY_LOGGER;
 
   private final ActorControl actor;
   private final ActorRetryMechanism retryMechanism;
@@ -30,7 +34,7 @@ public class EndlessRetryStrategy implements RetryStrategy {
 
   public EndlessRetryStrategy(final ActorControl actor) {
     this.actor = actor;
-    retryMechanism = new ActorRetryMechanism(actor);
+    retryMechanism = new ActorRetryMechanism();
   }
 
   @Override
@@ -45,20 +49,29 @@ public class EndlessRetryStrategy implements RetryStrategy {
     terminateCondition = condition;
     retryMechanism.wrap(callable, terminateCondition, currentFuture);
 
-    actor.runUntilDone(this::run);
+    actor.run(this::run);
 
     return currentFuture;
   }
 
   private void run() {
     try {
-      retryMechanism.run();
+      final var control = retryMechanism.run();
+      if (control == ActorRetryMechanism.Control.RETRY) {
+        actor.run(this::run);
+        actor.yieldThread();
+      }
     } catch (final Exception exception) {
       if (terminateCondition.getAsBoolean()) {
         currentFuture.complete(false);
-        actor.done();
       } else {
+        actor.run(this::run);
         actor.yieldThread();
+        LOG.error(
+            "Caught exception {} with message {}, will retry...",
+            exception.getClass(),
+            exception.getMessage(),
+            exception);
       }
     }
   }

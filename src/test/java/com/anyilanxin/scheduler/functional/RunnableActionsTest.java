@@ -125,7 +125,7 @@ public class RunnableActionsTest {
     final Consumer<ActorControl> runnable =
         (ctr) -> {
           if (actor.runs == 5) {
-            ctr.done();
+              ctr.close();
           } else {
               ctr.yieldThread();
           }
@@ -153,7 +153,7 @@ public class RunnableActionsTest {
                 ctr.run(otherAction); // does not interrupt this action
 
                 if (actor.runs == 5) {
-                  ctr.done();
+                    ctr.close();
                 } else {
                     ctr.yieldThread();
                 }

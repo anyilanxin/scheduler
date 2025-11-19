@@ -18,10 +18,12 @@ package com.anyilanxin.scheduler.future;
 
 import com.anyilanxin.scheduler.Loggers;
 import java.util.function.BiConsumer;
+import org.slf4j.Logger;
 
 public class FutureContinuationRunnable<T> implements Runnable {
   private final ActorFuture<T> future;
   private final BiConsumer<T, Throwable> consumer;
+  private static final Logger LOG = Loggers.FUTURE_LOGGER;
 
   public FutureContinuationRunnable(
       final ActorFuture<T> future, final BiConsumer<T, Throwable> consumer) {
@@ -36,7 +38,7 @@ public class FutureContinuationRunnable<T> implements Runnable {
         final T res = future.get();
         consumer.accept(res, null);
       } catch (final Throwable e) {
-        Loggers.ACTOR_LOGGER.debug("Continuing on future completion failed", e);
+        LOG.error("Continuing on future completion failed", e);
       }
     } else {
       consumer.accept(null, future.getException());

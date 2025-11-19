@@ -10,7 +10,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.anyilanxin.scheduler.start;
+package com.anyilanxin.scheduler.startup;
 
 import com.anyilanxin.scheduler.ConcurrencyControl;
 
@@ -23,7 +23,7 @@ import com.anyilanxin.scheduler.ConcurrencyControl;
 public class Content {
     private final ConcurrencyControl concurrencyControl;
 
-    public Content(ConcurrencyControl concurrencyControl) {
+    public Content(final ConcurrencyControl concurrencyControl) {
         this.concurrencyControl = concurrencyControl;
     }
 

@@ -229,14 +229,14 @@ public class ActorLifecyclePhasesTest {
           public void onActorStarted() {
             super.onActorStarted();
 
-              actor.runUntilDone(
+              actor.run(
                 () -> {
                   final int inv = invocations.getAndIncrement();
 
                   if (inv == 0) {
                     throw new RuntimeException("foo");
                   } else if (inv == 10) {
-                    actor.done();
+                      actor.close();
                   }
                 });
           }

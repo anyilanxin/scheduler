@@ -16,15 +16,14 @@
  */
 package com.anyilanxin.scheduler.lifecycle;
 
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-
 import com.anyilanxin.scheduler.future.CompletableActorFuture;
 import com.anyilanxin.scheduler.testing.ControlledActorSchedulerRule;
-import java.util.concurrent.Callable;
 import org.junit.Rule;
 import org.junit.Test;
+
+import java.util.concurrent.Callable;
+
+import static org.mockito.Mockito.*;
 
 @SuppressWarnings("unchecked")
 public class ActorLifecyclePhasesAndCallablesTest {

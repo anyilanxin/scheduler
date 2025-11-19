@@ -23,7 +23,7 @@ import java.lang.invoke.VarHandle;
 public class ActorConditionImpl implements ActorCondition, ActorSubscription {
   private static final VarHandle TRIGGER_COUNT_VAR_HANDLE;
 
-  private final long triggerCount = 0;
+  private long triggerCount = 0;
   private long runCount = 0;
 
   private final ActorJob job;

@@ -21,6 +21,12 @@ import com.anyilanxin.scheduler.future.CompletableActorFuture;
 
 public interface AsyncClosable {
 
+  /**
+   * Asynchronous closing. The implementation should close related resources and return a future,
+   * which is complete when closing is done.
+   *
+   * @return the future, which is completed when resources are closed
+   */
   ActorFuture<Void> closeAsync();
 
   static ActorFuture<Void> closeHelper(final AsyncClosable closeable) {

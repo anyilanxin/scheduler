@@ -23,10 +23,11 @@ public class CpuThreadGroup extends ActorThreadGroup {
 
   public CpuThreadGroup(final ActorSchedulerBuilder builder) {
     super(
-        String.format("%s-%s", builder.getSchedulerName(), "zb-actors"),
+        String.format("%s-%s", builder.getSchedulerName(), "cpu-scheduler"),
         builder.getCpuBoundActorThreadCount(),
         builder.getPriorityQuotas().length,
-        builder);
+        builder,
+        builder.getSchedulerName());
   }
 
   @Override
@@ -37,6 +38,6 @@ public class CpuThreadGroup extends ActorThreadGroup {
 
   @Override
   protected int getLevel(final ActorTask actorTask) {
-    return actorTask.getPriority();
+    return 1;
   }
 }

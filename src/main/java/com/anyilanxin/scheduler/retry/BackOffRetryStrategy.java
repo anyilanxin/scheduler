@@ -17,16 +17,18 @@
 package com.anyilanxin.scheduler.retry;
 
 import com.anyilanxin.scheduler.ActorControl;
+import com.anyilanxin.scheduler.Loggers;
 import com.anyilanxin.scheduler.future.ActorFuture;
 import com.anyilanxin.scheduler.future.CompletableActorFuture;
 import java.time.Duration;
 import java.util.function.BooleanSupplier;
+import org.slf4j.Logger;
 
 public class BackOffRetryStrategy implements RetryStrategy {
 
   private final ActorControl actor;
   private final Duration maxBackOff;
-
+  private static final Logger LOG = Loggers.RETRY_LOGGER;
   private Duration backOffDuration;
   private CompletableActorFuture<Boolean> currentFuture;
   private BooleanSupplier currentTerminateCondition;
@@ -65,6 +67,7 @@ public class BackOffRetryStrategy implements RetryStrategy {
         backOff();
       }
     } catch (final Exception exception) {
+      LOG.error("Back Off Retry Strategy error", exception);
       if (currentTerminateCondition.getAsBoolean()) {
         currentFuture.complete(false);
       } else {

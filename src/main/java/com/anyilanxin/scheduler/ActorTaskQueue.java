@@ -18,6 +18,7 @@ package com.anyilanxin.scheduler;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
+import java.util.concurrent.atomic.AtomicLong;
 import org.agrona.concurrent.ManyToOneConcurrentLinkedQueue;
 
 @SuppressWarnings("restriction")
@@ -77,7 +78,8 @@ class ActorTaskQueuePadding1 {
           lookup.findVarHandle(ActorTaskQueueNode.class, "prev", ActorTaskQueueNode.class);
       NEXT_VAR_HANDLE =
           lookup.findVarHandle(ActorTaskQueueNode.class, "next", ActorTaskQueueNode.class);
-      STATE_COUNT_VAR_HANDLE = lookup.findVarHandle(ActorTask.class, "stateCount", long.class);
+      STATE_COUNT_VAR_HANDLE =
+          lookup.findVarHandle(ActorTask.class, "stateCount", AtomicLong.class);
     } catch (final Exception ex) {
       throw new RuntimeException(ex);
     }

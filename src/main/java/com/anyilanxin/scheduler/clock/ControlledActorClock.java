@@ -28,11 +28,11 @@ public class ControlledActorClock implements ActorClock {
     reset();
   }
 
-  public void setCurrentTime(long currentTime) {
+  public void setCurrentTime(final long currentTime) {
     this.currentTime = currentTime;
   }
 
-  public void setCurrentTime(Instant currentTime) {
+  public void setCurrentTime(final Instant currentTime) {
     this.currentTime = currentTime.toEpochMilli();
   }
 
@@ -40,7 +40,7 @@ public class ControlledActorClock implements ActorClock {
     setCurrentTime(getCurrentTime());
   }
 
-  public void addTime(Duration durationToAdd) {
+  public void addTime(final Duration durationToAdd) {
     if (usesPointInTime()) {
       currentTime += durationToAdd.toMillis();
     } else {

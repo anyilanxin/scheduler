@@ -16,15 +16,17 @@
  */
 package com.anyilanxin.scheduler;
 
+import static com.anyilanxin.scheduler.ActorThread.ensureCalledFromActorThread;
+
 import com.anyilanxin.scheduler.future.ActorFuture;
 import com.anyilanxin.scheduler.future.CompletableActorFuture;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.VarHandle;
-import java.util.ArrayDeque;
-import java.util.Arrays;
-import java.util.Deque;
-import java.util.Queue;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import org.agrona.concurrent.ManyToOneConcurrentLinkedQueue;
+import org.jetbrains.annotations.Async;
+import org.slf4j.Logger;
 
 /**
  * A task executed by the scheduler. For each actor (instance), exactly one task is created. Each
@@ -32,61 +34,28 @@ import org.agrona.concurrent.ManyToOneConcurrentLinkedQueue;
  */
 @SuppressWarnings("restriction")
 public class ActorTask {
-  /** Describes an actor's scheduling state */
-  public enum TaskSchedulingState {
-    NOT_SCHEDULED,
-    ACTIVE,
-    QUEUED,
-    WAITING,
-    WAKING_UP,
-    TERMINATED
-  }
+  private static final Logger LOG = Loggers.ACTOR_LOGGER;
+  private static final AtomicReferenceFieldUpdater<ActorTask, ActorLifecyclePhase>
+      LIFECYCLE_UPDATER =
+          AtomicReferenceFieldUpdater.newUpdater(
+              ActorTask.class, ActorLifecyclePhase.class, "lifecyclePhase");
 
-  /** An actor task's lifecycle phases */
-  public enum ActorLifecyclePhase {
-    STARTING(1),
-    STARTED(2),
-    CLOSE_REQUESTED(4),
-    CLOSING(8),
-    CLOSED(16),
-    FAILED(32);
-
-    private final int value;
-
-    ActorLifecyclePhase(final int value) {
-      this.value = value;
-    }
-
-    public int getValue() {
-      return value;
-    }
-  }
-
-  private static final VarHandle STATE_COUNT_VAR_HANDLE;
-  private static final VarHandle SCHEDULING_STATE_VAR_HANDLE;
-
-  static {
-    try {
-      STATE_COUNT_VAR_HANDLE =
-          MethodHandles.lookup().findVarHandle(ActorTask.class, "stateCount", long.class);
-      SCHEDULING_STATE_VAR_HANDLE =
-          MethodHandles.lookup()
-              .findVarHandle(ActorTask.class, "schedulingState", TaskSchedulingState.class);
-    } catch (final Exception e) {
-      throw new RuntimeException(e);
-    }
-  }
-
-  public final CompletableActorFuture<Void> closeFuture = new CompletableActorFuture<>();
+  // Start with a completed future to allow closing unscheduled tasks. The future is reset to
+  // uncompleted in `onTaskScheduled`.
+  public final CompletableActorFuture<Void> closeFuture = CompletableActorFuture.completed(null);
+  final Actor actor;
+  ActorJob currentJob;
+  boolean shouldYield;
+  final AtomicReference<TaskSchedulingState> schedulingState = new AtomicReference<>();
+  final AtomicLong stateCount = new AtomicLong(0);
   private final CompletableActorFuture<Void> jobClosingTaskFuture = new CompletableActorFuture<>();
-
   private final CompletableActorFuture<Void> startingFuture = new CompletableActorFuture<>();
   private final CompletableActorFuture<Void> jobStartingTaskFuture = new CompletableActorFuture<>();
-
-  final Actor actor;
-
   private ActorExecutor actorExecutor;
   private ActorThreadGroup actorThreadGroup;
+  private Deque<ActorJob> fastLaneJobs = new ClosedQueue();
+  private volatile ActorLifecyclePhase lifecyclePhase = ActorLifecyclePhase.CLOSED;
+  private List<ActorSubscription> subscriptions = new ArrayList<>();
 
   /**
    * jobs that are submitted to this task externally. A job is submitted "internally" if it is
@@ -94,24 +63,7 @@ public class ActorTask {
    */
   private volatile Queue<ActorJob> submittedJobs = new ClosedQueue();
 
-  private Deque<ActorJob> fastLaneJobs = new ClosedQueue();
-
-  private ActorLifecyclePhase lifecyclePhase = ActorLifecyclePhase.CLOSED;
-
-  volatile TaskSchedulingState schedulingState = null;
-
-  volatile long stateCount = 0;
-
-  ActorJob currentJob;
-
-  private ActorSubscription[] subscriptions = new ActorSubscription[0];
-
-  boolean shouldYield;
-
-  /**
-   * the priority class of the task. Only set if the task is scheduled as non-blocking, CPU-bound
-   */
-  private int priority = ActorPriority.REGULAR.getPriorityClass();
+  //  private final ActorMetricsScoped metrics = ActorMetricsScoped.NOOP;
 
   public ActorTask(final Actor actor) {
     this.actor = actor;
@@ -143,7 +95,6 @@ public class ActorTask {
     final ActorJob j = new ActorJob();
     j.setRunnable(actor::onActorStarting);
     j.setResultFuture(jobStartingTaskFuture);
-    j.setAutoCompleting(true);
     j.onJobAddedToTask(this);
 
     currentJob = j;
@@ -151,7 +102,7 @@ public class ActorTask {
   }
 
   /** Used to externally submit a job. */
-  public void submit(final ActorJob job) {
+  public void submit(@Async.Schedule final ActorJob job) {
     // get reference to jobs queue
     final Queue<ActorJob> submittedJobs = this.submittedJobs;
 
@@ -172,7 +123,7 @@ public class ActorTask {
   }
 
   public boolean execute(final ActorThread runner) {
-    schedulingState = TaskSchedulingState.ACTIVE;
+    schedulingState.set(TaskSchedulingState.ACTIVE);
 
     boolean resubmit = false;
     while (!resubmit && (currentJob != null || poll())) {
@@ -260,6 +211,11 @@ public class ActorTask {
           onClosed();
           resubmit = false;
           break;
+
+        default:
+          LOG.error("Unexpected actor lifecycle phase {}", lifecyclePhase.name());
+          throw new IllegalStateException(
+              "Unexpected actor lifecycle phase " + lifecyclePhase.name());
       }
     } else {
       if (lifecyclePhase != ActorLifecyclePhase.CLOSED) {
@@ -273,7 +229,6 @@ public class ActorTask {
   private void submitStartedJob() {
     final ActorJob startedJob = ActorThread.current().newJob();
     startedJob.onJobAddedToTask(this);
-    startedJob.setAutoCompleting(true);
     startedJob.setRunnable(actor::onActorStarted);
     currentJob = startedJob;
   }
@@ -281,7 +236,6 @@ public class ActorTask {
   private void submitClosedJob() {
     final ActorJob closedJob = ActorThread.current().newJob();
     closedJob.onJobAddedToTask(this);
-    closedJob.setAutoCompleting(true);
     closedJob.setRunnable(actor::onActorClosed);
     currentJob = closedJob;
   }
@@ -289,20 +243,19 @@ public class ActorTask {
   private void submitClosingJob() {
     final ActorJob closeJob = ActorThread.current().newJob();
     closeJob.onJobAddedToTask(this);
-    closeJob.setAutoCompleting(true);
     closeJob.setRunnable(actor::onActorClosing);
     closeJob.setResultFuture(jobClosingTaskFuture);
     currentJob = closeJob;
   }
 
   private void onClosed() {
-    schedulingState = TaskSchedulingState.NOT_SCHEDULED;
+    schedulingState.set(TaskSchedulingState.NOT_SCHEDULED);
 
-    for (final ActorSubscription subscription : subscriptions) {
-      subscription.cancel();
-    }
-
-    subscriptions = new ActorSubscription[0];
+    // we need to work on a copy - otherwise we would get a ConcurrentModificationException
+    // since some subscriptions remove them self on cancel
+    final var actorSubscriptions = new ArrayList<>(subscriptions);
+    actorSubscriptions.forEach(ActorSubscription::cancel);
+    subscriptions = new ArrayList<>();
 
     final Queue<ActorJob> activeJobsQueue = submittedJobs;
     submittedJobs = new ClosedQueue();
@@ -313,12 +266,14 @@ public class ActorTask {
       // cancel and discard jobs
       failJob(j);
     }
+    //    metrics.close();
   }
 
   private void failJob(final ActorJob job) {
     try {
       job.failFuture("Actor is closed");
     } catch (final IllegalStateException e) {
+      LOG.error("actor job fail error.", e);
       // job is already completed or failed, ignore
     }
   }
@@ -333,28 +288,51 @@ public class ActorTask {
     }
   }
 
+  public void onFailure(final Throwable failure) {
+    final var currentPhase = lifecyclePhase;
+    switch (currentPhase) {
+      case STARTING -> {
+        LOG.error(
+            "Actor failed in phase 'STARTING'. Discard all jobs and stop immediately.", failure);
+        lifecyclePhase = ActorLifecyclePhase.FAILED;
+        discardNextJobs();
+        startingFuture.completeExceptionally(failure);
+        closeFuture.completeExceptionally(failure);
+      }
+      case CLOSING, CLOSE_REQUESTED -> {
+        LOG.error(
+            "Actor failed in phase '{}'. Discard all jobs and stop immediately.",
+            currentPhase,
+            failure);
+        lifecyclePhase = ActorLifecyclePhase.FAILED;
+        discardNextJobs();
+        closeFuture.completeExceptionally(failure);
+      }
+      case STARTED -> {
+        actor.handleFailure(failure);
+        currentJob.failFuture(failure);
+      }
+      default -> {
+        // do nothing
+      }
+    }
+  }
+
   private void discardNextJobs() {
     // discard next jobs
     ActorJob next;
     while ((next = fastLaneJobs.poll()) != null) {
+      LOG.debug("Discard job {} from fastLane of Actor {}.", next, actor.getName());
       failJob(next);
     }
   }
 
   boolean casStateCount(final long expectedCount) {
-    if (stateCount == expectedCount) {
-      stateCount = expectedCount + 1;
-      return true;
-    }
-    return false;
+    return stateCount.compareAndSet(expectedCount, expectedCount + 1);
   }
 
   boolean casState(final TaskSchedulingState expectedState, final TaskSchedulingState newState) {
-    if (schedulingState == expectedState) {
-      schedulingState = newState;
-      return true;
-    }
-    return false;
+    return schedulingState.compareAndSet(expectedState, newState);
   }
 
   public boolean claim(final long stateCount) {
@@ -369,10 +347,10 @@ public class ActorTask {
     // take copy of subscriptions list: once we set the state to WAITING, the task could be woken up
     // by another
     // thread. That thread could modify the subscriptions array.
-    final ActorSubscription[] subscriptionsCopy = subscriptions;
+    final List<ActorSubscription> subscriptionsRef = new ArrayList<>(subscriptions);
 
     // first set state to waiting
-    schedulingState = TaskSchedulingState.WAITING;
+    schedulingState.set(TaskSchedulingState.WAITING);
 
     /*
      * Accounts for the situation where a job is appended while in state active.
@@ -381,7 +359,7 @@ public class ActorTask {
      * up right away.
      */
     if ((lifecyclePhase == ActorLifecyclePhase.STARTED && !submittedJobs.isEmpty())
-        || pollSubscriptionsWithoutAddingJobs(subscriptionsCopy)) {
+        || pollSubscriptionsWithoutAddingJobs(subscriptionsRef)) {
       // could be that another thread already woke up this task
       return casState(TaskSchedulingState.WAITING, TaskSchedulingState.WAKING_UP);
     }
@@ -433,11 +411,11 @@ public class ActorTask {
     return subscription.triggersInPhase(lifecyclePhase) && subscription.poll();
   }
 
-  private boolean pollSubscriptionsWithoutAddingJobs(final ActorSubscription[] subscriptions) {
+  private boolean pollSubscriptionsWithoutAddingJobs(final List<ActorSubscription> subscriptions) {
     boolean result = false;
 
-    for (int i = 0; i < subscriptions.length && !result; i++) {
-      result |= pollSubscription(subscriptions[i]);
+    for (int i = 0; i < subscriptions.size() && !result; i++) {
+      result |= pollSubscription(subscriptions.get(i));
     }
 
     return result;
@@ -446,8 +424,8 @@ public class ActorTask {
   private boolean allPhaseSubscriptionsTriggered() {
     boolean allTriggered = true;
 
-    for (int i = 0; i < subscriptions.length && allTriggered; i++) {
-      final ActorSubscription subscription = subscriptions[i];
+    for (int i = 0; i < subscriptions.size() && allTriggered; i++) {
+      final ActorSubscription subscription = subscriptions.get(i);
       allTriggered &= !subscription.triggersInPhase(lifecyclePhase);
     }
 
@@ -473,43 +451,13 @@ public class ActorTask {
     return hasJobs;
   }
 
-  public void onFailure(final Throwable failure) {
-    final var currentPhase = lifecyclePhase;
-    switch (currentPhase) {
-      case STARTING -> {
-        Loggers.ACTOR_LOGGER.error(
-            "Actor failed in phase 'STARTING'. Discard all jobs and stop immediately.", failure);
-        lifecyclePhase = ActorLifecyclePhase.FAILED;
-        discardNextJobs();
-        startingFuture.completeExceptionally(failure);
-        closeFuture.completeExceptionally(failure);
-      }
-      case CLOSING, CLOSE_REQUESTED -> {
-        Loggers.ACTOR_LOGGER.error(
-            "Actor failed in phase '{}'. Discard all jobs and stop immediately.",
-            currentPhase,
-            failure);
-        lifecyclePhase = ActorLifecyclePhase.FAILED;
-        discardNextJobs();
-        closeFuture.completeExceptionally(failure);
-      }
-      case STARTED -> {
-        actor.handleFailure(failure);
-        currentJob.failFuture(failure);
-      }
-      default -> {
-        // do nothing
-      }
-    }
-  }
-
   public TaskSchedulingState getState() {
-    return schedulingState;
+    return schedulingState.get();
   }
 
   @Override
   public String toString() {
-    return actor.getName() + " " + schedulingState + " phase: " + lifecyclePhase;
+    return actor.getName() + " " + schedulingState.get() + " phase: " + lifecyclePhase;
   }
 
   public void yieldThread() {
@@ -517,11 +465,7 @@ public class ActorTask {
   }
 
   public long getStateCount() {
-    return stateCount;
-  }
-
-  public ActorThreadGroup getActorThreadGroup() {
-    return actorThreadGroup;
+    return stateCount.get();
   }
 
   public String getName() {
@@ -536,14 +480,6 @@ public class ActorTask {
     return lifecyclePhase == ActorLifecyclePhase.CLOSING;
   }
 
-  public int getPriority() {
-    return priority;
-  }
-
-  public void setPriority(final int priority) {
-    this.priority = priority;
-  }
-
   public ActorExecutor getActorExecutor() {
     return actorExecutor;
   }
@@ -556,34 +492,17 @@ public class ActorTask {
     return startingFuture;
   }
 
-  // subscription helpers
-
   public void addSubscription(final ActorSubscription subscription) {
-    final ActorSubscription[] arrayCopy = Arrays.copyOf(subscriptions, subscriptions.length + 1);
-    arrayCopy[arrayCopy.length - 1] = subscription;
-    subscriptions = arrayCopy;
+    ensureCalledFromActorThread("addSubscription(ActorSubscription)");
+    subscriptions.add(subscription);
   }
 
   private void removeSubscription(final ActorSubscription subscription) {
-    final int length = subscriptions.length;
-
-    int index = -1;
-    for (int i = 0; i < subscriptions.length; i++) {
-      if (subscriptions[i] == subscription) {
-        index = i;
-      }
-    }
-
-    assert index >= 0 : "Subscription not registered";
-
-    final ActorSubscription[] newSubscriptions = new ActorSubscription[length - 1];
-    System.arraycopy(subscriptions, 0, newSubscriptions, 0, index);
-    if (index < length - 1) {
-      System.arraycopy(subscriptions, index + 1, newSubscriptions, index, length - index - 1);
-    }
-
-    subscriptions = newSubscriptions;
+    ensureCalledFromActorThread("removeSubscription(ActorSubscription)");
+    subscriptions.remove(subscription);
   }
+
+  // subscription helpers
 
   public void onSubscriptionCancelled(final ActorSubscription subscription) {
     if (lifecyclePhase != ActorLifecyclePhase.CLOSED) {
@@ -591,20 +510,76 @@ public class ActorTask {
     }
   }
 
-  public void setUpdatedSchedulingHints(final int hints) {
-    if (SchedulingHints.isCpuBound(hints)) {
-      priority = SchedulingHints.getPriority(hints);
-      actorThreadGroup = actorExecutor.getCpuBoundThreads();
-    } else {
-      actorThreadGroup = actorExecutor.getIoBoundThreads();
-    }
-  }
-
   public void resubmit() {
     actorThreadGroup.submit(this);
   }
 
-  public void insertJob(final ActorJob job) {
+  public void insertJob(@Async.Schedule final ActorJob job) {
     fastLaneJobs.addFirst(job);
+  }
+
+  public void fail(final Throwable error) {
+    final var previousPhase = LIFECYCLE_UPDATER.getAndSet(this, ActorLifecyclePhase.FAILED);
+
+    if (previousPhase == ActorLifecyclePhase.FAILED) {
+      return;
+    }
+
+    if (previousPhase == ActorLifecyclePhase.STARTING) {
+      startingFuture.completeExceptionally(error);
+    }
+
+    if (previousPhase != ActorLifecyclePhase.CLOSED) {
+      closeFuture.completeExceptionally(error);
+    }
+
+    discardNextJobs();
+    actor.onActorFailed();
+  }
+
+  public int estimateQueueLength() {
+    if (fastLaneJobs instanceof ClosedQueue || submittedJobs instanceof ClosedQueue) {
+      return 0;
+    }
+    // In theory this could overflow. In practice, both queue sizes are very low.
+    return fastLaneJobs.size() + submittedJobs.size();
+  }
+
+  //  ActorMetricsScoped getActorMetrics() {
+  //    return metrics;
+  //  }
+
+  //  void setActorMetrics(final ActorMetricsScoped scoped) {
+  //    metrics = scoped;
+  //  }
+
+  /** Describes an actor's scheduling state */
+  public enum TaskSchedulingState {
+    NOT_SCHEDULED,
+    ACTIVE,
+    QUEUED,
+    WAITING,
+    WAKING_UP,
+    TERMINATED
+  }
+
+  /** An actor task's lifecycle phases */
+  public enum ActorLifecyclePhase {
+    STARTING(1),
+    STARTED(2),
+    CLOSE_REQUESTED(4),
+    CLOSING(8),
+    CLOSED(16),
+    FAILED(32);
+
+    private final int value;
+
+    ActorLifecyclePhase(final int value) {
+      this.value = value;
+    }
+
+    public int getValue() {
+      return value;
+    }
   }
 }

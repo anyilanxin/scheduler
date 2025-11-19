@@ -40,7 +40,8 @@ public class WorkStealingGroup {
    * @param threadId the id of the thread into which queue the task should be submitted
    */
   public void submit(final ActorTask task, final int threadId) {
-    task.schedulingState = QUEUED;
+    //    task.schedulingState = QUEUED;
+    task.schedulingState.set(QUEUED);
     taskQueues[threadId].append(task);
   }
 

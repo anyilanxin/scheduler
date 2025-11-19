@@ -10,13 +10,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.anyilanxin.scheduler;
+package com.anyilanxin.scheduler.startup;
 
-import com.anyilanxin.scheduler.start.Content;
-import com.anyilanxin.scheduler.start.UserInfoStart;
-import com.anyilanxin.scheduler.start.UserInfoStartTwo;
-import com.anyilanxin.scheduler.startup.StartupProcess;
-import com.anyilanxin.scheduler.startup.StartupStep;
+import com.anyilanxin.scheduler.Actor;
+import com.anyilanxin.scheduler.ActorScheduler;
+import org.junit.Test;
 
 import java.util.List;
 
@@ -56,13 +54,16 @@ public class TestInfo extends Actor {
         startupProcess.startup(this, new Content(actor));
     }
 
-    static void main() {
+
+    @Test
+    public void handleStartUP() {
         try {
             final ActorScheduler build = ActorScheduler.newActorScheduler().setIoBoundActorThreadCount(2)
                     .setCpuBoundActorThreadCount(2)
                     .build();
             build.start();
-            build.submitActor(new TestInfo());
+            build.submitActor(new TestInfo()).join();
+            System.out.println("-------complete");
         } catch (final Exception e) {
             e.printStackTrace();
         }
