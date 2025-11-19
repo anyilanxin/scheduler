@@ -16,8 +16,9 @@
  */
 package com.anyilanxin.scheduler;
 
-import com.anyilanxin.scheduler.future.ActorFuture;
+import static com.anyilanxin.scheduler.Loggers.ACTOR_LOGGER;
 
+import com.anyilanxin.scheduler.future.ActorFuture;
 import java.time.Duration;
 import java.util.Collection;
 import java.util.Collections;
@@ -27,8 +28,6 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
-
-import static com.anyilanxin.scheduler.Loggers.ACTOR_LOGGER;
 
 /** Actor */
 public abstract class Actor implements AutoCloseable, AsyncClosable, ConcurrencyControl {
@@ -89,9 +88,9 @@ public abstract class Actor implements AutoCloseable, AsyncClosable, Concurrency
     return "%s-%s".formatted(nameFirst, nameSecond);
   }
 
-    public static String buildActorName(final String nameFirst, final Integer nameSecond) {
-        return "%s-%d".formatted(nameFirst, nameSecond);
-    }
+  public static String buildActorName(final String nameFirst, final Integer nameSecond) {
+    return "%s-%d".formatted(nameFirst, nameSecond);
+  }
 
   @Override
   public <T> void runOnCompletion(
