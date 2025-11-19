@@ -22,5 +22,5 @@ import org.slf4j.LoggerFactory;
 public final class Loggers {
   private Loggers() {}
 
-    public static final Logger ACTOR_LOGGER = LoggerFactory.getLogger("com.anyilanxin.scheduler");
+  public static final Logger ACTOR_LOGGER = LoggerFactory.getLogger("com.anyilanxin.scheduler");
 }

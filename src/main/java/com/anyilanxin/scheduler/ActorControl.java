@@ -24,8 +24,6 @@ import com.anyilanxin.scheduler.future.ActorFuture;
 import com.anyilanxin.scheduler.future.AllCompletedFutureConsumer;
 import com.anyilanxin.scheduler.future.FirstSuccessfullyCompletedFutureConsumer;
 import com.anyilanxin.scheduler.future.FutureContinuationRunnable;
-import org.slf4j.Logger;
-
 import java.time.Duration;
 import java.util.Collection;
 import java.util.concurrent.Callable;
@@ -33,11 +31,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import org.slf4j.Logger;
 
 /** ActorControl provides methods to interact with the actor. */
 public class ActorControl implements ConcurrencyControl {
   private final Actor actor;
-    private final static Logger LOG = Loggers.ACTOR_LOGGER;
+  private static final Logger LOG = Loggers.ACTOR_LOGGER;
 
   final ActorTask task;
 
@@ -138,8 +137,8 @@ public class ActorControl implements ConcurrencyControl {
   public <T> ActorFuture<T> call(final Callable<T> callable) {
     final ActorThread runner = ActorThread.current();
     if (runner != null && runner.getCurrentTask() == task) {
-        LOG.error("Incorrect usage of actor.call(...) cannot be called from current actor.");
-        throw new UnsupportedOperationException(
+      LOG.error("Incorrect usage of actor.call(...) cannot be called from current actor.");
+      throw new UnsupportedOperationException(
           "Incorrect usage of actor.call(...) cannot be called from current actor.");
     }
 
@@ -525,7 +524,9 @@ public class ActorControl implements ConcurrencyControl {
   private ActorJob ensureCalledFromWithinActor(final String methodName) {
     final ActorJob currentJob = ensureCalledFromActorThread(methodName).getCurrentJob();
     if (!isCalledFromWithinActor(currentJob)) {
-        LOG.error("Incorrect usage of actor.{}: must only be called from within the actor itself.", methodName);
+      LOG.error(
+          "Incorrect usage of actor.{}: must only be called from within the actor itself.",
+          methodName);
       throw new UnsupportedOperationException(
           "Incorrect usage of actor."
               + methodName
@@ -539,7 +540,7 @@ public class ActorControl implements ConcurrencyControl {
     final ActorThread thread = ActorThread.current();
 
     if (thread == null) {
-        LOG.error("Incorrect usage of actor.{}: must be called from actor thread", methodName);
+      LOG.error("Incorrect usage of actor.{}: must be called from actor thread", methodName);
       throw new UnsupportedOperationException(
           "Incorrect usage of actor. " + methodName + ": must be called from actor thread");
     }
