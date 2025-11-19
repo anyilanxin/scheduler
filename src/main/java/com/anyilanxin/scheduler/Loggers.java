@@ -22,8 +22,5 @@ import org.slf4j.LoggerFactory;
 public final class Loggers {
   private Loggers() {}
 
-  public static final Logger CONFIG_LOGGER = LoggerFactory.getLogger("io.zeebe.util.config");
-  public static final Logger ACTOR_LOGGER = LoggerFactory.getLogger("io.zeebe.util.actor");
-  public static final Logger IO_LOGGER = LoggerFactory.getLogger("io.zeebe.util.buffer");
-  public static final Logger FILE_LOGGER = LoggerFactory.getLogger("io.zeebe.util.fs");
+    public static final Logger ACTOR_LOGGER = LoggerFactory.getLogger("com.anyilanxin.scheduler");
 }
